@@ -1,0 +1,46 @@
+PROJECT(matrix_test)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.6)
+
+ADD_CUSTOM_TARGET(run
+    COMMAND ${PROJECT_NAME}
+    DEPENDS ${PROJECT_NAME}
+    WORKING_DIRECTORY ${CMAKE_PROJECT_DIR}
+)
+
+find_package(OpenCL REQUIRED)
+
+IF(CMAKE_BUILD_TYPE MATCHES Debug)
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb -fsanitize=address")
+  ADD_DEFINITIONS(-DDEBUG)
+ENDIF(CMAKE_BUILD_TYPE MATCHES Debug)
+
+SET(CXX11_FLAGS "-pthread -std=gnu++17")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXX11_FLAGS}")
+
+IF(UNIX)
+  ADD_DEFINITIONS(-DUNIX)
+ENDIF(UNIX)
+
+INCLUDE_DIRECTORIES(
+  "${PROJECT_SOURCE_DIR}/include"
+)
+
+# Set Includes
+SET(INCLUDES ${PROJECT_SOURCE_DIR}/include)
+INCLUDE_DIRECTORIES(${INCLUDES} ${OpenCL_INCLUDE_DIRS})
+link_directories(${OpenCL_LIBRARY})
+
+# Set sources
+FILE(GLOB_RECURSE SOURCES "src/*.cpp")
+ADD_EXECUTABLE(${PROJECT_NAME} ${SOURCES})
+
+ADD_CUSTOM_TARGET("${PROJECT_NAME}_SUCCESSFUL" ALL
+                  DEPENDS ${PROJECT_NAME}
+                  COMMAND ${CMAKE_COMMAND} -E echo ""
+                  COMMAND ${CMAKE_COMMAND} -E echo "====================="
+                  COMMAND ${CMAKE_COMMAND} -E echo "  Compile complete!"
+                  COMMAND ${CMAKE_COMMAND} -E echo "====================="
+                  COMMAND ${CMAKE_COMMAND} -E echo "${CMAKE_CURRENT_BINARY_DIR}"
+                 )
+
+TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${OpenCL_LIBRARY})
