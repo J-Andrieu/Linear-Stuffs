@@ -214,7 +214,7 @@ bool matrix<ItemType>::useGPU(bool use_it) {
 			m_gpuUpToDate = false;
 			m_gpuSlicesUpToDate.clear();
 			m_gpuSlicesUpToDate.resize(m_height, false);
-			m_upToDate |= !(dataFlag::GPU_HEIGHT | dataFlag::GPU_WIDTH | datFlag::GPU_DATA);
+			m_upToDate |= !(dataFlag::GPU_HEIGHT | dataFlag::GPU_WIDTH | dataFlag::GPU_DATA);
 		}
 		//if this is being set to true, pushing and calculating everything at once
 		//could take some time, so everything should get pushed when it's first needed
@@ -286,7 +286,7 @@ template <class ItemType>
 matrix<ItemType>& matrix<ItemType>::resize(size_t height, size_t width, ItemType& val) {
 	if (m_height != height) {
 		m_data.resize(height);
-		m_upToDate &= !dataFlags::GPU_HEIGHT;
+		m_upToDate &= !dataFlag::GPU_HEIGHT;
 		m_gpuSlicesUpToDate.resize(height, false);
 		clReleaseMemObject(m_gpuHeight);
 		m_gpuHeight = NULL;
@@ -295,14 +295,14 @@ matrix<ItemType>& matrix<ItemType>::resize(size_t height, size_t width, ItemType
 		for (size_t i = 0; i < height; i++) {
 			(*m_data[i]).resize(width, val);
 		}
-		m_upToDate &= !dataFlags::GPU_WIDTH;
+		m_upToDate &= !dataFlag::GPU_WIDTH;
 		clReleaseMemObject(m_gpuWidth);
 	}
 	m_height = height;
 	m_width = width;
 	clReleaseMemObject(m_gpuData);
 	m_gpuData = NULL;
-	m_upToDate &= !dataFlags::GPU_DATA;
+	m_upToDate &= !dataFlag::GPU_DATA;
 	m_gpuSlicesUpToDate.clear();
 	m_gpuSlicesUpToDate.resize(m_height, false);
 	m_gpuUpToDate = false;

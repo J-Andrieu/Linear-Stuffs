@@ -45,7 +45,7 @@ int main(void) {
 		}
 	}
 	std::cout << "A small identity:" << std::endl;
-	print_matrix<int>((LinAlgo::matrix<int>&) LinAlgo::matrix<int>::identity(5));
+	print_matrix<int>(LinAlgo::matrix<int>::identity(5));
 	std::cout << std::endl;
 	std::cout << "M1:" << std::endl;
 	print_matrix<type>(m1);
