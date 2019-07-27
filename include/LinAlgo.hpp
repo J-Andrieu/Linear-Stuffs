@@ -182,8 +182,8 @@ static cl_int LinAlgo::InitGPU() {
 
 	//create kernels
 	//first get the programs set up
-#ifdef _WIN32
-	std::string kernel_directory = "C:/Users/jadri/Desktop/OpenCL matrix/kernels/";
+#ifdef MATRIX_KERNEL_DIR
+	std::string kernel_directory = #MATRIX_KERNEL_DIR ;
 #else 
 	std::string kernel_directory = "../kernels/";
 #endif
@@ -319,9 +319,7 @@ LinAlgo::matrix<ItemType> LinAlgo::transpose(const LinAlgo::matrix<ItemType>& M)
 //WHY IS THIS OVERWRITING THE INPUT??!?
 template <class ItemType>
 LinAlgo::matrix<ItemType> LinAlgo::re(const LinAlgo::matrix<ItemType>& M) {
-	std::cout << "Calling copy constructor...\n" << std::endl;
 	matrix<ItemType> result(M);
-	std::cout << "The constructor has finished running...\n" << std::endl;
 	if (false) {
 		//use gpu vector addition
 	}
