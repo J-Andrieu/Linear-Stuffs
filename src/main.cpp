@@ -36,7 +36,7 @@ int main(void) {
 
 	LinAlgo::matrix<type> m1(HEIGHT, WIDTH);
 	LinAlgo::matrix<type> m2(WIDTH, HEIGHT);
-	LinAlgo::AllUseGPU(true);
+	//LinAlgo::AllUseGPU(true);
 	
 	for (size_t i = 0; i < HEIGHT; i++) {
 		for (size_t j = 0; j < WIDTH; j++) {
@@ -60,7 +60,22 @@ int main(void) {
 	std::cout << "Row Echelon M1:" << std::endl;
 	print_matrix<type>(LinAlgo::re(m1));
 	std::cout << std::endl;
+	std::cout << "Reduced Row Echelon M1:" << std::endl;
+	print_matrix<type>(LinAlgo::rre(m1));
+	std::cout << std::endl;
+	std::cout << "Gauss-Jordan Elimination M1:" << std::endl;
+	print_matrix<type>(LinAlgo::gj(m1));
+	std::cout << std::endl;
+	std::cout << "Gauss-Jordan Elimination on test linear system:" << std::endl;
+	LinAlgo::matrix<type> linsys({
+		{1, 2, 3, 4},
+		{19, 22, 0, 6},
+		{12, -14, 7, 3} });
+	print_matrix<type>(LinAlgo::gj(linsys));
+	std::cout << std::endl;
 
+	m1.useGPU(true);
+	m2.useGPU(true);
 	t.start();
 	LinAlgo::matrix<type> m3 = m1.add(m2);
 	long long int t1 = t.getMicrosecondsElapsed();
@@ -82,7 +97,9 @@ int main(void) {
 	print_matrix<type>(m4);
 	std::cout << std::endl;
 
-	LinAlgo::AllUseGPU(false);
+	//LinAlgo::AllUseGPU(false);
+	m1.useGPU(false);
+	m2.useGPU(false);
 	t.start();
 	LinAlgo::matrix<type> m5 = m1.add(m2);
 	long long int t3 = t.getMicrosecondsElapsed();

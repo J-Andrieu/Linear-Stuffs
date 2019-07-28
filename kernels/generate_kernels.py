@@ -26,3 +26,7 @@ for t in types:
 
 	with open("matrix_kernels_" + t + ".cl", 'w') as file:
 		file.write(kernel)
+
+
+#I will have to use some form of structs in order to support complex numbers
+#so I won't be able to use this template for those all that well if I implement them

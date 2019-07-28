@@ -183,7 +183,7 @@ static cl_int LinAlgo::InitGPU() {
 	//create kernels
 	//first get the programs set up
 #ifdef MATRIX_KERNEL_DIR
-	std::string kernel_directory = #MATRIX_KERNEL_DIR ;
+	std::string kernel_directory = MATRIX_KERNEL_DIR ;
 #else 
 	std::string kernel_directory = "../kernels/";
 #endif
@@ -300,6 +300,9 @@ static bool LinAlgo::IsGPUInitialized() {
 
 #pragma region Linear Algebra Functions
 
+/**
+* @brief Non-overwriting matrix transposition
+*/
 template <class ItemType>
 LinAlgo::matrix<ItemType> LinAlgo::transpose(const LinAlgo::matrix<ItemType>& M) {
 	matrix<ItemType> result(M.m_width, M.m_height);
@@ -316,7 +319,11 @@ LinAlgo::matrix<ItemType> LinAlgo::transpose(const LinAlgo::matrix<ItemType>& M)
 	return result;
 }
 
-//WHY IS THIS OVERWRITING THE INPUT??!?
+/**
+* @brief Non-overwriting row-echelon
+*
+* @details returns the row-echelon form of a matrix without overwriting the original
+*/
 template <class ItemType>
 LinAlgo::matrix<ItemType> LinAlgo::re(const LinAlgo::matrix<ItemType>& M) {
 	matrix<ItemType> result(M);
@@ -368,6 +375,60 @@ LinAlgo::matrix<ItemType> LinAlgo::re(const LinAlgo::matrix<ItemType>& M) {
 			}
 		}
 	}
+	return result;
+}
+
+/**
+* @brief Non-overwriting reduced row-echelon
+*/
+template <class ItemType>
+LinAlgo::matrix<ItemType> LinAlgo::rre(const LinAlgo::matrix<ItemType>& M) {
+	matrix<ItemType> result(re(M));
+	if (false) {//use gpu
+
+	} else {
+		ItemType scalar;
+		for (size_t i = 0, j = 0; i < result.m_height && j < result.m_width; i++, j++) {
+			if ((*result.m_data[i])[j] != 0) {
+				scalar = (*result.m_data[i])[j];
+				for (size_t k = j; k < M.m_width; k++) {
+					(*result.m_data[i])[k] /= scalar;
+				}
+			} else {
+				i--;
+			}
+		}
+	}
+	return result;
+}
+
+/**
+* @brief Non-overwriting Gauss-Jordan Elimination
+*/
+template <class ItemType>
+LinAlgo::matrix<ItemType> LinAlgo::gj(const LinAlgo::matrix<ItemType>& M) {
+	matrix<ItemType> result(LinAlgo::rre(M));
+	if (false) {//use gpu
+
+	}
+	else {
+		ItemType scalar;
+		//stars at 1,1 b/c can't eliminate above row 0
+		for (size_t pivotRow = 1, pivotColumn = 1; pivotRow < result.m_height && pivotColumn < result.m_width; pivotRow++, pivotColumn++) {
+			if ((*result.m_data[pivotRow])[pivotColumn] == 1) {
+				for (size_t i = pivotRow - 1; i >= 0 && i < (((size_t) 0) - 1); i--) {
+					scalar = (*result.m_data[i])[pivotColumn];
+					for (size_t j = pivotColumn; j < result.m_width; j++) {
+						(*result.m_data[i])[j] -= (*result.m_data[pivotRow])[j] * scalar;
+					}
+				}
+			}
+			else {
+				pivotRow--;
+			}
+		}
+	}
+
 	return result;
 }
 

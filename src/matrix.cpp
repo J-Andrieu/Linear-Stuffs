@@ -27,7 +27,7 @@ matrix<ItemType>::matrix(size_t height, size_t width, bool enable_gpu) : m_heigh
 																		m_gpuUpToDate(false), m_gpuData(NULL), m_gpuHeight(NULL),
 																		m_gpuWidth(NULL), m_command_queue(NULL), m_gpuSlicesUpToDate(height, false) {
 	m_data.resize(m_height);
-	for (int i = 0; i < m_height; i++) {
+	for (size_t i = 0; i < m_height; i++) {
 		m_data[i] = new std::vector<ItemType>(m_width);
 	}
 	m_upToDate = 0;
@@ -52,9 +52,42 @@ matrix<ItemType>::matrix(size_t height, size_t width, ItemType val, bool enable_
 																						m_gpuUpToDate(false), m_gpuData(NULL), m_gpuHeight(NULL), m_upToDate(0),
 																						m_gpuWidth(NULL), m_command_queue(NULL), m_gpuSlicesUpToDate(height, false) {
 	m_data.resize(m_height);
-	for (int i = 0; i < m_height; i++) {
+	for (size_t i = 0; i < m_height; i++) {
 		m_data[i] = new std::vector<ItemType>(m_width, val);
 	}
+}
+
+/**
+* @brief Explicit matrix constructor
+*
+* @detail Allows you to create a matrix from initializer lists. If the 
+* lists aren't all the same size, then the width will be the widest list,
+* and 0 will be assigned to all empty locations
+*
+* @param[vals] The vector of vectors to be turned into a matrix
+*
+* @param[enable_gpu] Whether or not the gpu should be enabled for this matrix
+*/
+template <class ItemType>
+matrix<ItemType>::matrix(const std::vector<std::vector<ItemType>>& vals, bool enable_gpu) : m_useGPU(enable_gpu), m_gpuUpToDate(false), m_gpuData(NULL), 
+																							m_gpuHeight(NULL), m_gpuWidth(NULL), m_command_queue(NULL), m_leaveOnGPU(false) {
+	size_t maxSize = 0;
+	for (size_t i = 0; i < vals.size(); i++) {
+		if (vals[i].size() > maxSize) {
+			maxSize = vals[i].size();
+		}
+	}
+	m_height = vals.size();
+	m_width = maxSize;
+	m_data.resize(m_height);
+	for (size_t i = 0; i < m_height; i++) {
+		m_data[i] = new std::vector<ItemType>(m_width, 0);
+		for (size_t j = 0; j < vals[i].size(); j++) {
+			(*m_data[i])[j] = vals[i][j];
+		}
+	}
+	m_gpuSlicesUpToDate.resize(m_height, false);
+	m_upToDate = 0;
 }
 
 /**
@@ -1076,6 +1109,32 @@ matrix<ItemType>& matrix<ItemType>::operator=(const matrix<ArgType>& M) {
 
 	//clear everything else that's now irrelevent (or copy things that are over lol)
 	return *this;
+}
+
+/**
+* @brief Move assignment operator
+*/
+template <class ItemType>
+matrix<ItemType>& matrix<ItemType>::operator=(matrix<ItemType>&& M) {
+	m_height = M.m_height;
+	m_width = M.m_width;
+	m_data = M.m_data;
+	for (size_t i = 0; i < M.m_height; i++) {
+		M.m_data[i] = NULL;
+	}
+	m_gpuData = M.m_gpuData;
+	M.m_gpuData = NULL;
+	m_command_queue = M.m_command_queue;
+	M.m_command_queue = NULL;
+	m_gpuHeight = M.m_gpuHeight;
+	M.m_gpuHeight = NULL;
+	m_gpuWidth = M.m_gpuWidth;
+	M.m_gpuWidth = NULL;
+	m_upToDate = M.m_upToDate;
+	m_useGPU = M.m_useGPU;
+	m_leaveOnGPU = M.m_leaveOnGPU;
+	m_gpuUpToDate = M.m_gpuUpToDate;
+	m_gpuSlicesUpToDate = M.m_gpuSlicesUpToDate;
 }
 
 /**

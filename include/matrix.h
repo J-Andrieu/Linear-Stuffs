@@ -34,6 +34,7 @@ public:
 	//replacing above and below w/ matrix(size_t h, size_t w, ItemType& val = NULL, bool use_gpu = fase) 
 	//may be better
 	matrix(size_t height, size_t width, ItemType val, bool enable_gpu = false);
+	matrix(const std::vector<std::vector<ItemType>>& vals, bool enable_gpu = false);
 	template <class ParamType>
 	matrix(const matrix<ParamType>& M);
 	matrix(const matrix<ItemType>& M);
