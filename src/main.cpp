@@ -11,6 +11,7 @@
 #include <fstream>
 #include <string>
 #include <sstream>
+#include <tuple>
 
 #include "../include/LinAlgo.hpp"
 #include "../include/Timer.h"
@@ -18,13 +19,17 @@
 //less than 25x25 causes bsod with the destructor uncommented for some reason
 const int HEIGHT = 5;
 const int WIDTH = 10;
-typedef double type;
+typedef float type;
 
 template <class ItemType>
 void print_matrix(const LinAlgo::matrix<ItemType>& M);
 void checkReturn(cl_int ret);
 //template <class ItemType>
 //bool checkAccuracy(LinAlgo::matrix<ItemType>& gpu, LinAlgo::matrix<ItemType>& cpu);
+
+std::tuple<size_t, size_t> getDimensions(matrix<type> &M) {
+    return {M.getHeight(), M.getWidth()};
+}
 
 /*MATRIX TESTING*/
 int main(void) {
@@ -35,9 +40,11 @@ int main(void) {
 	Timer t;
 
 	LinAlgo::matrix<type> m1(HEIGHT, WIDTH);
+	auto[height, width] = getDimensions(m1);
+	std::cout << "The dimensions of m1 are height: " << height << ", width: " << width << std::endl;
 	LinAlgo::matrix<type> m2(WIDTH, HEIGHT);
 	//LinAlgo::AllUseGPU(true);
-	
+
 	for (size_t i = 0; i < HEIGHT; i++) {
 		for (size_t j = 0; j < WIDTH; j++) {
 			m1.set(i, j, (type) (i + j));
@@ -133,7 +140,7 @@ int main(void) {
 	std::cout << "The addition kernel is " << (m5 == m3 ? "accurate" : "not accurate") << std::endl;
 	std::cout << "The subtraction kernel is " << (m7 == m8 ? "accurate" : "not accurate") << std::endl;
 	std::cout << "The multiplication kernel is " << (m6 == m4 ? "accurate" : "not accurate") << std::endl;
-	
+
 
 //	if (HEIGHT < 15) {
 //		std::cout << "Now to chain multiply all those matrices together just for the fun of it and see what pops out..." << std::endl;
@@ -152,7 +159,7 @@ int main(void) {
 //	print_matrix<int>((matrix<int> &) m1.multiply((matrix<int>&) m1.transpose()));
 //	std::cout << std::endl;
 //	print_matrix<int>((matrix<int> &) m1.transpose().multiply(m1));
-	
+
 	LinAlgo::BreakDownGPU();
 
 //	int x;
@@ -269,7 +276,7 @@ const char* getErrorString(cl_int error)
 	}
 }
 
-void checkReturn(cl_int ret) { 
+void checkReturn(cl_int ret) {
 	if (ret != CL_SUCCESS)
 		std::cerr << getErrorString(ret) << std::endl;
 }
