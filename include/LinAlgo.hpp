@@ -320,6 +320,27 @@ LinAlgo::matrix<ItemType> LinAlgo::transpose(const LinAlgo::matrix<ItemType>& M)
 }
 
 /**
+* @brief QR decomposition
+*
+* @detail V1 uses the Graham-Schmidt method for QR factorization
+*/
+template <class ItemType>
+bool LinAlgo::qr(const LinAlgo::matrix<ItemType>& M, matrix<ItemType>& Q, matrix<ItemType>& R) {
+  if (M.m_height != M.m_width) {
+    return false;
+  }
+
+  matrix<ItemType> M_trans(transpose(M));//can use for "vertical slices" of M
+  if (false) {//use gpu
+
+  } else {
+    
+  }
+
+  return true;
+}
+
+/**
 * @brief Non-overwriting row-echelon
 *
 * @details returns the row-echelon form of a matrix without overwriting the original
