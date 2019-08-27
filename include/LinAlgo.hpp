@@ -106,6 +106,37 @@ namespace LinAlgo {
 			return program;
 		}
 
+		float getPlatformVersion(cl_platform_id platform_id) {
+            //evaluate opencl version
+#define VERSION_LENGTH 64
+            char complete_version[VERSION_LENGTH];
+            size_t realSize = 0;
+            clGetPlatformInfo(platform_id, CL_PLATFORM_VERSION, VERSION_LENGTH,
+                              &complete_version, &realSize);
+            char version[4];
+            version[3] = 0;
+            //printf("%s\n", complete_version);
+            std::copy(complete_version + 7, complete_version + 11, version);
+            return atof(version);
+            //printf("V %s %f\n", version, OPENCL_VERSION);
+		}
+
+		int choosePlatform(cl_platform_id* platform_id, int numPlatforms, float preferredOCLVersion) {
+		    float versions[numPlatforms];
+            for (int i = 0; i < numPlatforms; i++) {
+                versions[i] = getPlatformVersion(platform_id[i]);
+                if (versions[i] == preferredOCLVersion) {
+                    return i;
+                }
+            }
+            for (int i = 0; i < numPlatforms; i++) {
+                if (std::floor(versions[i]) == std::floor(preferredOCLVersion)) {
+                    return i;
+                }
+            }
+            return 0;
+		}
+
 		//private variables
 		bool GPU_INITIALIZED = false;
 		bool ALL_USE_GPU = false;
@@ -142,7 +173,7 @@ namespace LinAlgo {
 		cl_kernel m_doubleKernels[Kernel::NUM_KERNELS] = { NULL };
 		cl_kernel* m_Kernels[KernelType::NUM_TYPES] = { m_charKernels, m_shortKernels, m_intKernels, m_longKernels, m_floatKernels, m_doubleKernels };
 
-		cl_platform_id m_platform_id = NULL;
+		cl_platform_id* m_platform_id = NULL;
 		cl_device_id m_device_id = NULL;
 		cl_context m_context = NULL;
 	}
@@ -167,12 +198,17 @@ static cl_int LinAlgo::InitGPU() {
 	//get platform and device information
 	cl_uint ret_num_devices;
 	cl_uint ret_num_platforms;
-	cl_int ret = clGetPlatformIDs(1, &m_platform_id, &ret_num_platforms);
+	cl_int ret = clGetPlatformIDs(0, m_platform_id, &ret_num_platforms);
+	m_platform_id = new cl_platform_id[ret_num_platforms];
+	ret = clGetPlatformIDs(ret_num_devices, m_platform_id, &ret_num_platforms);
 	if (ret != CL_SUCCESS) {
 		printf("Could not get platform IDs.\n");
 		return ret;
 	}
-	ret = clGetDeviceIDs(m_platform_id, CL_DEVICE_TYPE_GPU, 1, &m_device_id, &ret_num_devices);
+	int platform_index = choosePlatform(m_platform_id, ret_num_platforms, 2.2);
+	OPENCL_VERSION = getPlatformVersion(m_platform_id[platform_index]);
+	printf("The chosen platform version is %f\n", OPENCL_VERSION);
+	ret = clGetDeviceIDs(m_platform_id[platform_index], CL_DEVICE_TYPE_GPU, 1, &m_device_id, &ret_num_devices);
 	if (ret != CL_SUCCESS) {
 		printf("Could not get device IDs.\n");
 		return ret;
@@ -182,18 +218,7 @@ static cl_int LinAlgo::InitGPU() {
         return ret;
 	}
 
-	//evaluate opencl version
-#define VERSION_LENGTH 64
-    char complete_version[VERSION_LENGTH];
-    size_t realSize = 0;
-    clGetPlatformInfo(m_platform_id, CL_PLATFORM_VERSION, VERSION_LENGTH,
-                        &complete_version, &realSize);
-    char version[4];
-    version[3] = 0;
-    //printf("%s\n", complete_version);
-    std::copy(complete_version + 7, complete_version + 11, version);
-    OPENCL_VERSION = atof(version);
-    //printf("V %s %f\n", version, OPENCL_VERSION);
+
 
 	//create the context
 	m_context = clCreateContext(NULL, 1, &m_device_id, NULL, NULL, &ret);
@@ -265,6 +290,7 @@ static cl_int LinAlgo::InitGPU() {
 	for (size_t type = 0; type < KernelType::NUM_TYPES; type++) {
 		clReleaseProgram(programs[type]);
 	}
+    delete[] programs;
 
 	//le done :P
 	GPU_INITIALIZED = true;
@@ -360,7 +386,7 @@ bool LinAlgo::qr(const LinAlgo::matrix<ItemType>& M, matrix<ItemType>& Q, matrix
   if (false) {//use gpu
 
   } else {
-    
+
   }
 
   return true;
