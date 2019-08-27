@@ -1,6 +1,9 @@
+#ifdef cl_khr_fp64
+#pragma OPENCL EXTENSION cl_khr_fp64 : enable
+#endif
 
-__kernel void add(__global const double* A, __global const size_t* a_width, 
-				__global const double* B, __global const size_t* b_width, 
+__kernel void add(__global const double* A, __global const size_t* a_width,
+				__global const double* B, __global const size_t* b_width,
 				__global double* C, __global const size_t* c_width) {
 	size_t index = get_global_id(0);
 	size_t x = index % c_width[0];
@@ -9,8 +12,8 @@ __kernel void add(__global const double* A, __global const size_t* a_width,
 }
 
 
-__kernel void elementMultiply(__global const double* A, __global const size_t* a_width, 
-				__global const double* B, __global const size_t* b_width, 
+__kernel void elementMultiply(__global const double* A, __global const size_t* a_width,
+				__global const double* B, __global const size_t* b_width,
 				__global double* C, __global const size_t* c_width) {
 	size_t index = get_global_id(0);
 	size_t x = index % c_width[0];
@@ -19,8 +22,8 @@ __kernel void elementMultiply(__global const double* A, __global const size_t* a
 }
 
 
-__kernel void subtract(__global const double* A, __global const size_t* a_width, 
-				__global const double* B, __global const size_t* b_width, 
+__kernel void subtract(__global const double* A, __global const size_t* a_width,
+				__global const double* B, __global const size_t* b_width,
 				__global double* C, __global const size_t* c_width) {
 	size_t index = get_global_id(0);
 	size_t x = index % c_width[0];
@@ -29,8 +32,8 @@ __kernel void subtract(__global const double* A, __global const size_t* a_width,
 }
 
 
-__kernel void elementDivide(__global const double* A, __global const size_t* a_width, 
-				__global const double* B, __global const size_t* b_width, 
+__kernel void elementDivide(__global const double* A, __global const size_t* a_width,
+				__global const double* B, __global const size_t* b_width,
 				__global double* C, __global const size_t* c_width) {
 	size_t index = get_global_id(0);
 	size_t x = index % c_width[0];
@@ -39,8 +42,8 @@ __kernel void elementDivide(__global const double* A, __global const size_t* a_w
 }
 
 
-__kernel void multiply(__global const double* A, __global const size_t* a_width, 
-						__global const double* B, __global const size_t* b_width, 
+__kernel void multiply(__global const double* A, __global const size_t* a_width,
+						__global const double* B, __global const size_t* b_width,
 						__global double* C, __global const size_t* res_width) {
 	size_t index = get_global_id(0);
 	size_t row_index = (index / res_width[0]) * a_width[0];

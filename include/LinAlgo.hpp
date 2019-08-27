@@ -14,6 +14,7 @@
 #include <string>
 #include <type_traits>
 
+#define CL_USE_DEPRECATED_OPENCL_1_2_APIS
 #ifdef _WIN32
 #include <CL\cl.h>
 #else
@@ -25,10 +26,10 @@
 *
 * @brief Contains everything necessary to get some linear algebra done
 *
-* @detail This namespace contains the matrix definition as well as all of the 
+* @detail This namespace contains the matrix definition as well as all of the
 * global functions and variables required for initializing the gpu. The namespace
-* also has many functions with the same name as functions in the matrix class. 
-* The difference between these functions is that the matrix version of the 
+* also has many functions with the same name as functions in the matrix class.
+* The difference between these functions is that the matrix version of the
 * functions overwrites the calling object, while the LinAlgo versions does not.
 */
 namespace LinAlgo {
@@ -51,7 +52,7 @@ namespace LinAlgo {
 	template <class ItemType>
 	matrix<ItemType> map(const matrix<ItemType>& M, cl_kernel kernel, cl_int& error_ret);
 
-	
+
 	template <class ItemType>
 	bool qr(const matrix<ItemType>& M, matrix<ItemType>& Q, matrix<ItemType>& R);//returns if it was successful i guess
 
@@ -90,6 +91,7 @@ namespace LinAlgo {
 			std::string kernel_src;
 			while (std::getline(file, line)) {
 				kernel_src += line;
+				kernel_src += '\n';
 			}
 			//printf("Kernel source: \n%s", kernel_src.c_str());
 			const size_t* kernel_size = new size_t(kernel_src.size());
@@ -107,6 +109,7 @@ namespace LinAlgo {
 		//private variables
 		bool GPU_INITIALIZED = false;
 		bool ALL_USE_GPU = false;
+		float OPENCL_VERSION = 0.0f;
 
 		typedef enum {
 			ADD,
@@ -146,6 +149,7 @@ namespace LinAlgo {
 }
 
 #pragma region GPU Functions
+// <editor-fold desc="GPU Functions">
 /**
 * @brief InitGPU() initilizes the gpu for linear algebra
 *
@@ -156,7 +160,8 @@ namespace LinAlgo {
 * @return cl_int This function returns CL_SUCCESS if the initialization is successful, otherwise it returns an error code.
 */
 static cl_int LinAlgo::InitGPU() {
-	if (GPU_INITIALIZED)
+
+   if (GPU_INITIALIZED)
 		return CL_SUCCESS;
 
 	//get platform and device information
@@ -167,11 +172,28 @@ static cl_int LinAlgo::InitGPU() {
 		printf("Could not get platform IDs.\n");
 		return ret;
 	}
-	ret = clGetDeviceIDs(m_platform_id, CL_DEVICE_TYPE_DEFAULT, 1, &m_device_id, &ret_num_devices);
+	ret = clGetDeviceIDs(m_platform_id, CL_DEVICE_TYPE_GPU, 1, &m_device_id, &ret_num_devices);
 	if (ret != CL_SUCCESS) {
 		printf("Could not get device IDs.\n");
 		return ret;
 	}
+	if (ret_num_devices == 0) {
+        printf("No GPU located.\n");
+        return ret;
+	}
+
+	//evaluate opencl version
+#define VERSION_LENGTH 64
+    char complete_version[VERSION_LENGTH];
+    size_t realSize = 0;
+    clGetPlatformInfo(m_platform_id, CL_PLATFORM_VERSION, VERSION_LENGTH,
+                        &complete_version, &realSize);
+    char version[4];
+    version[3] = 0;
+    //printf("%s\n", complete_version);
+    std::copy(complete_version + 7, complete_version + 11, version);
+    OPENCL_VERSION = atof(version);
+    //printf("V %s %f\n", version, OPENCL_VERSION);
 
 	//create the context
 	m_context = clCreateContext(NULL, 1, &m_device_id, NULL, NULL, &ret);
@@ -184,12 +206,13 @@ static cl_int LinAlgo::InitGPU() {
 	//first get the programs set up
 #ifdef MATRIX_KERNEL_DIR
 	std::string kernel_directory = MATRIX_KERNEL_DIR ;
-#else 
+#else
 	std::string kernel_directory = "../kernels/";
 #endif
-	cl_program programs[KernelType::NUM_TYPES];
+	cl_program* programs = new cl_program[KernelType::NUM_TYPES];
 	std::vector<std::string> type_str({ "char", "short", "int", "long", "float", "double" });
 	for (size_t type = 0; type < KernelType::NUM_TYPES; type++) {
+        //printf("The kernel file name is: %s\n", std::string(kernel_directory + std::string("matrix_kernels_") + type_str[type] + std::string(".cl")).c_str());
 		programs[type] = create_program(kernel_directory +
 			std::string("matrix_kernels_") +
 			type_str[type] +
@@ -219,7 +242,7 @@ static cl_int LinAlgo::InitGPU() {
 				clGetProgramBuildInfo(programs[type], m_device_id, CL_PROGRAM_BUILD_LOG, log_size, log, NULL);
 
 				// Print the log
-				printf("program_int build unsuccessful:\n%s\n", log);
+				printf("program_%s build unsuccessful:\n%s\n", type_str[type].c_str(), log);
 			}
 			return ret;
 		}
@@ -228,10 +251,11 @@ static cl_int LinAlgo::InitGPU() {
 	//and finally, create the kernels
 	std::vector<std::string> kernelNames({ "add", "addScalar", "subtract", "subtractScalar", "multiply", "multiplyScalar", "elementMultiply", "divideScalar", "elementDivide" });
 	for (size_t type = 0; type < KernelType::NUM_TYPES; type++) {
+            //printf("Generating kernels for type: %s\n", type_str[type].c_str());
 		for (size_t kernel = 0; kernel < Kernel::NUM_KERNELS; kernel++) {
 			m_Kernels[type][kernel] = clCreateKernel(programs[type], kernelNames[kernel].c_str(), &ret);
 			if (ret != CL_SUCCESS) {
-				printf("Could not create kernel.\n");
+				//printf("Could not create kernel. Kernel name: %s, type: %s\n", kernelNames[kernel].c_str(), type_str[type].c_str());
 				return ret;
 			}
 		}
@@ -294,11 +318,13 @@ static bool LinAlgo::AllUseGPU(bool use_it) {
 static bool LinAlgo::IsGPUInitialized() {
 	return GPU_INITIALIZED;
 }
+// </editor-fold>
 #pragma endregion
 
 #include "matrix.h"
 
 #pragma region Linear Algebra Functions
+// <editor-fold desc="Linear Algebra Functions">
 
 /**
 * @brief Non-overwriting matrix transposition
@@ -360,7 +386,7 @@ LinAlgo::matrix<ItemType> LinAlgo::re(const LinAlgo::matrix<ItemType>& M) {
 		ItemType pivot;
 		ItemType scalar;
 
-		//time to get it to row echelon form 
+		//time to get it to row echelon form
 		for (size_t i = 0; i < numPivots; i++, pivotColumn++, pivotRow++) {
 			if (pivotRow > result.m_height - 1 || pivotColumn > result.m_width - 1) {
 				break;//break if pivot location is outside matrix, or in the last column
@@ -453,6 +479,7 @@ LinAlgo::matrix<ItemType> LinAlgo::gj(const LinAlgo::matrix<ItemType>& M) {
 	return result;
 }
 
+// </editor-fold>
 #pragma endregion
 
 #endif

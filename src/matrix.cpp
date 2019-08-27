@@ -11,6 +11,8 @@
 using namespace LinAlgo;
 
 #pragma region Constructors and Destructors
+// <editor-fold desc="Constructors and Destructors">
+//{
 /**
 * @brief This is the constructor for the matrix class.
 *
@@ -60,7 +62,7 @@ matrix<ItemType>::matrix(size_t height, size_t width, ItemType val, bool enable_
 /**
 * @brief Explicit matrix constructor
 *
-* @detail Allows you to create a matrix from initializer lists. If the 
+* @detail Allows you to create a matrix from initializer lists. If the
 * lists aren't all the same size, then the width will be the widest list,
 * and 0 will be assigned to all empty locations
 *
@@ -69,7 +71,7 @@ matrix<ItemType>::matrix(size_t height, size_t width, ItemType val, bool enable_
 * @param[enable_gpu] Whether or not the gpu should be enabled for this matrix
 */
 template <class ItemType>
-matrix<ItemType>::matrix(const std::vector<std::vector<ItemType>>& vals, bool enable_gpu) : m_useGPU(enable_gpu), m_gpuUpToDate(false), m_gpuData(NULL), 
+matrix<ItemType>::matrix(const std::vector<std::vector<ItemType>>& vals, bool enable_gpu) : m_useGPU(enable_gpu), m_gpuUpToDate(false), m_gpuData(NULL),
 																							m_gpuHeight(NULL), m_gpuWidth(NULL), m_command_queue(NULL), m_leaveOnGPU(false) {
 	size_t maxSize = 0;
 	for (size_t i = 0; i < vals.size(); i++) {
@@ -93,15 +95,15 @@ matrix<ItemType>::matrix(const std::vector<std::vector<ItemType>>& vals, bool en
 /**
 * @brief This is the (templated) copy constructor for the matrix class
 *
-* @details This constructor will copy the height, width, and data. It also copies whether or not 
+* @details This constructor will copy the height, width, and data. It also copies whether or not
 * it should use the gpu. This onstructor is only called when it needs to convert matrix types
 *
 * @param[M] This is the matrix to be copied
 */
 template <class ItemType>
 template <class ArgType>
-matrix<ItemType>::matrix(const matrix<ArgType>& M) : m_useGPU(M.m_useGPU), m_gpuUpToDate(false), 
-														m_gpuData(NULL), m_gpuHeight(NULL), 
+matrix<ItemType>::matrix(const matrix<ArgType>& M) : m_useGPU(M.m_useGPU), m_gpuUpToDate(false),
+														m_gpuData(NULL), m_gpuHeight(NULL),
 														m_gpuWidth(NULL), m_command_queue(NULL),
 														m_gpuSlicesUpToDate(M.m_height, false), m_leaveOnGPU(M.m_leaveOnGPU) {
 	m_height = M.m_height;
@@ -120,7 +122,7 @@ matrix<ItemType>::matrix(const matrix<ArgType>& M) : m_useGPU(M.m_useGPU), m_gpu
 * @brief This is the copy constructor for the matrix class
 *
 * @details This constructor will copy the height, width, and data. It also copies whether or not
-* it should use the gpu. 
+* it should use the gpu.
 *
 * @param[M] This is the matrix to be copied
 */
@@ -128,18 +130,18 @@ template <class ItemType>
 matrix<ItemType>::matrix(const matrix<ItemType>& M) : m_useGPU(M.m_useGPU), m_gpuUpToDate(false),
 														m_gpuData(NULL), m_gpuHeight(NULL),
 														m_gpuWidth(NULL), m_command_queue(NULL),
-														m_gpuSlicesUpToDate(M.m_height, false), m_leaveOnGPU(M.m_leaveOnGPU), 
+														m_gpuSlicesUpToDate(M.m_height, false), m_leaveOnGPU(M.m_leaveOnGPU),
 														m_data(M.m_height){
 	m_height = M.m_height;
 	m_width = M.m_width;
-	m_upToDate = 0;//this will defo be different later 
+	m_upToDate = 0;//this will defo be different later
 	for (size_t i = 0; i < m_height; i++) {
 		m_data[i] = new std::vector<ItemType>(m_width);
 		for (size_t j = 0; j < m_width; j++) {
 			(*m_data[i])[j] = (*M.m_data[i])[j];
 		}
 	}
-	
+
 }
 
 /**
@@ -172,7 +174,7 @@ matrix<ItemType>::matrix(matrix<ItemType>&& M) : m_useGPU(M.m_useGPU), m_gpuUpTo
 *
 * @note Work in progress
 */
-template <class ItemType> 
+template <class ItemType>
 matrix<ItemType>::~matrix() {
 	/*
 	clFinish(m_command_queue);
@@ -182,11 +184,14 @@ matrix<ItemType>::~matrix() {
 	clReleaseMemObject(m_gpuWidth);
 	*/
 }
+//}
+// </editor-fold>
 #pragma endregion
 
 #pragma region Initializers
+// <editor-fold desc="Initializers">
 /**
-* @brief Fills the matrix with the provided value 
+* @brief Fills the matrix with the provided value
 *
 * @param[val] The value to fill the matrix with
 */
@@ -256,9 +261,11 @@ bool matrix<ItemType>::useGPU(bool use_it) {
 	}
 	return false;
 }
+// </editor-fold>
 #pragma endregion
 
 #pragma region Setters and Getters
+// <editor-fold desc="Setters and Getters">
 /**
 * @brief This function returns the value or object stored at the specified position.
 *
@@ -278,7 +285,7 @@ ItemType matrix<ItemType>::get(size_t y, size_t x) const  {
 *
 * @param[x] The width of the position.
 *
-* @param[val] The value to be inserted to the position. 
+* @param[val] The value to be inserted to the position.
 */
 template <class ItemType>
 void matrix<ItemType>::set(size_t y, size_t x, ItemType val) {
@@ -308,11 +315,11 @@ size_t matrix<ItemType>::getWidth() const  {
 * @brief Resizes the calling matrix
 *
 * @detail This resizes the matrix to the given height and width.
-* 
+*
 * @param[height] The new height
 *
 * @param[width] The new width
-* 
+*
 * @param[val] If the matrix is being expanded, val will be used to fill the void
 */
 template <class ItemType>
@@ -350,7 +357,7 @@ matrix<ItemType>& matrix<ItemType>::resize(size_t height, size_t width, ItemType
 * @param[x] The column to start the slice
 *
 * @param[h] The height of the new matrix
-* 
+*
 * @param[w] The width of the new matrix
 *
 * @note If the requested region is out of bounds it will return a 0x0 matrix
@@ -383,9 +390,11 @@ matrix<ItemType> matrix<ItemType>::identity(size_t height, size_t width) {
 	}
 	return id;
 }
+// </editor-fold>
 #pragma endregion
 
 #pragma region Addition Functions
+// <editor-fold desc="Addition Functions">
 /**
 * @brief Adds two matrices.
 *
@@ -515,9 +524,11 @@ template <class ArgType>
 matrix<ItemType> matrix<ItemType>::operator+(const ArgType& val) {
 	return this->add(val);
 }
+// </editor-fold>
 #pragma endregion
 
 #pragma region Subtraction Functions
+// <editor-fold desc="Subtraction Functions">
 /**
 * @brief Subtracts two matrices.
 *
@@ -649,9 +660,11 @@ template <class ArgType>
 matrix<ItemType> matrix<ItemType>::operator-(const ArgType& val) {
 	return this->subtract(val);
 }
+// </editor-fold>
 #pragma endregion
 
 #pragma region Multiplication Functions
+// <editor-fold desc="Multiplication Functions">
 /**
 * @brief Multiplies two matrices.
 *
@@ -660,7 +673,7 @@ matrix<ItemType> matrix<ItemType>::operator-(const ArgType& val) {
 *
 * @param[M] The rhs matrix for the multiplication.
 *
-* @return Returns the result of multiplying the two matrices together, of the same type as the calling matrix. Returned matrix is 0x0 
+* @return Returns the result of multiplying the two matrices together, of the same type as the calling matrix. Returned matrix is 0x0
 * if the matrices were of incompatible dimensions.
 */
 template <class ItemType>
@@ -692,7 +705,7 @@ matrix<ItemType> matrix<ItemType>::multiply(matrix<ArgType>& M) {
 		result.createResultBuffer(m_command_queue);
 		if (std::is_same<ItemType, ArgType>::value) {
 			cl_int ret;
-			
+
 			if (std::is_same<ItemType, char>::value) {
 				ret = execute_multiply_kernel(m_charKernels[Kernel::MULTIPLY], M, result);
 			} else if (std::is_same<ItemType, short>::value) {
@@ -851,9 +864,11 @@ template <class ArgType>
 matrix<ItemType> matrix<ItemType>::operator*(const ArgType& val) {
 	return this->multiply(val);
 }
+// </editor-fold>
 #pragma endregion
 
 #pragma region Division Functions
+// <editor-fold desc="Division Functions">
 /*
 The matrix division function will go here once the matrix inverse is taken care of
 */
@@ -982,9 +997,11 @@ template <class ArgType>
 matrix<ItemType> matrix<ItemType>::operator/(const ArgType& val) {
 	return this->divide(val);
 }
+// </editor-fold>
 #pragma endregion
 
 #pragma region Linear Algebra Functions
+// <editor-fold desc="Linear Algebra Functions">
 /**
 * @brief Transposes the matrix
 *
@@ -1009,9 +1026,11 @@ matrix<ItemType>& matrix<ItemType>::transpose() {
 	m_gpuSlicesUpToDate.resize(m_height, false);
 	return *this;
 }
+// </editor-fold>
 #pragma endregion
 
 #pragma region Operator Overloads
+// <editor-fold desc="Operator Overloads">
 /**
 * @brief Using the [] operator will slice a row of the matrix.
 *
@@ -1030,7 +1049,7 @@ std::vector<ItemType>& matrix<ItemType>::operator[](size_t y) const {
 /**
 * @brief Assignment operator whoot
 *
-* @param[M] The matrix to be copied. 
+* @param[M] The matrix to be copied.
 *
 * @return A reference to the lhs matrix.
 */
@@ -1140,7 +1159,7 @@ matrix<ItemType>& matrix<ItemType>::operator=(matrix<ItemType>&& M) {
 /**
 * @brief Equality operator
 *
-* @detail Checks if non-GPU data is equivalent, checked data is only height, width, and matrix content. 
+* @detail Checks if non-GPU data is equivalent, checked data is only height, width, and matrix content.
 * (Requires an update from GPU if set to leave data on the GPU)
 */
 template <class ItemType>
@@ -1180,12 +1199,14 @@ bool matrix<ItemType>::operator!=(const matrix<ArgType>& M) const {
 	}
 	return true;
 }
-
+// </editor-fold>
 #pragma endregion
 
-#pragma region Auxilliary Functions for Handling GPU data
+#pragma region Auxilliary Functions for Handling GPU Data
+// <editor-fold desc="Auxilliary Functions for Handling GPU Data">
 
 #pragma region Initialization Functions
+// <editor-fold desc="Initialization Functions">
 //private auxilliary function to initialize the OpenCL command queue
 template <class ItemType>
 cl_int matrix<ItemType>::initQueue() {
@@ -1193,7 +1214,11 @@ cl_int matrix<ItemType>::initQueue() {
 		clReleaseCommandQueue(m_command_queue);
 	}
 	cl_int ret;
-	m_command_queue = clCreateCommandQueueWithProperties(m_context, m_device_id, 0, &ret);
+	if (OPENCL_VERSION >= 2.0) {
+        m_command_queue = clCreateCommandQueueWithProperties(m_context, m_device_id, 0, &ret); //segfaults on manjaro/radeon
+	} else {
+        m_command_queue = clCreateCommandQueue(m_context, m_device_id, 0, &ret); //infinite hange on manjaro/radeon
+	}
 	if (ret != CL_SUCCESS) {
 		printf("Unable to create command queue, error code: %d\n", ret);
 	}
@@ -1335,9 +1360,11 @@ cl_int matrix<ItemType>::pullFromGPU(cl_command_queue& command_queue) {
 	m_upToDate |= dataFlag::GPU_DATA;
 	return ret;
 }
+// </editor-fold>
 #pragma endregion
 
 #pragma region Functions for Executing Kernels
+// <editor-fold desc="Functions for Executing Kernels">
 //Private function for executing the add kernel
 template <class ItemType>
 cl_int matrix<ItemType>::execute_add_kernel(cl_kernel kernel, matrix<ItemType>& rhs, matrix<ItemType>& result) {
@@ -1373,8 +1400,8 @@ cl_int matrix<ItemType>::execute_add_kernel(cl_kernel kernel, matrix<ItemType>& 
 	//size_t local_item_size = 64;
 
 	//removed local work group size since using it properly requires a fair amount bothering to query the cpu
-	//and calculating divisibility of the broader work group space by the local. As well as determing if there 
-	//should be work group dimensions and splitting amoung those. So, in lieu of not wanting to modify both this 
+	//and calculating divisibility of the broader work group space by the local. As well as determing if there
+	//should be work group dimensions and splitting amoung those. So, in lieu of not wanting to modify both this
 	//function and the gpu initialization function, imma leave it at NULL so that the gpu decides it on its own
 	//until i decide i have a better idea on how i can handle it myself (especially the dimesnsions)
 	//Oh, and changing it to null made it actually work on linux instead of throwing CL_INVALID_WORK_GROUP_SIZE
@@ -1471,8 +1498,10 @@ cl_int matrix<ItemType>::execute_array_val_kernel(cl_kernel kernel, ItemType& va
 
 	return ret;
 }
+// </editor-fold>
 #pragma endregion
 
+// </editor-fold>
 #pragma endregion
 
 #endif
