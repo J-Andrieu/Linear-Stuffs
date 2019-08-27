@@ -160,14 +160,7 @@ namespace LinAlgo {
 */
 static cl_int LinAlgo::InitGPU() {
 
-    #ifdef unix
-    #ifdef __amd64__
-    printf("Sorry, but amd with linux just doesn't work for OpenCL :'(\n");
-    return -34;
-    #endif // __amd64__
-    #endif // unix
-
-	if (GPU_INITIALIZED)
+   if (GPU_INITIALIZED)
 		return CL_SUCCESS;
 
 	//get platform and device information

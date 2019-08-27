@@ -1215,9 +1215,9 @@ cl_int matrix<ItemType>::initQueue() {
 	}
 	cl_int ret;
 	if (OPENCL_VERSION >= 2.0) {
-        m_command_queue = clCreateCommandQueueWithProperties(m_context, m_device_id, 0, &ret);
+        m_command_queue = clCreateCommandQueueWithProperties(m_context, m_device_id, 0, &ret); //segfaults on manjaro/radeon
 	} else {
-        m_command_queue = clCreateCommandQueue(m_context, m_device_id, NULL, &ret);
+        m_command_queue = clCreateCommandQueue(m_context, m_device_id, 0, &ret); //infinite hange on manjaro/radeon
 	}
 	if (ret != CL_SUCCESS) {
 		printf("Unable to create command queue, error code: %d\n", ret);
