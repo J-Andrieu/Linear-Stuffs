@@ -14,6 +14,7 @@
 #include <string>
 #include <type_traits>
 
+#define CL_USE_DEPRECATED_OPENCL_1_2_APIS
 #ifdef _WIN32
 #include <CL\cl.h>
 #else

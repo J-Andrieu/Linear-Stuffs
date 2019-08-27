@@ -17,8 +17,8 @@
 #include "../include/Timer.h"
 
 //less than 25x25 causes bsod with the destructor uncommented for some reason
-const int HEIGHT = 2500;
-const int WIDTH = 2500;
+const int HEIGHT = 15;
+const int WIDTH = 5;
 typedef float type;
 
 template <class ItemType>
