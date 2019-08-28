@@ -110,6 +110,21 @@ int main (void) {
     std::cout << "Inverse of M1:" << std::endl;
     print_matrix<type> (LinAlgo::inverse (m1));
     std::cout << "The determinant of M1 is: " << m1.getDeterminant() << std::endl << std::endl;
+    std::cout << "Matrix division: \nNumerator:" << std::endl;
+    //LinAlgo::matrix<type> numerator({
+    //                                {1, 2, 3, 4, 5},
+    //                                {1, 2, 3, 4, 5},
+    //                                {1, 2, 3, 4, 5},
+    //                                {1, 2, 3, 4, 5},
+    //                                {1, 2, 3, 4, 5}
+    //                                });
+    //print_matrix<type>(numerator);
+    print_matrix<type>(invert2);
+    std::cout << "Denominator: " << std::endl;
+    print_matrix<type>(invert2);
+    std::cout << "Result: " << std::endl;
+    print_matrix(invert2.divide(invert2));
+    std::cout << std::endl;
 
 
     m1.useGPU (true);

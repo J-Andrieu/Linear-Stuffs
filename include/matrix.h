@@ -55,6 +55,7 @@ public:
 
     size_t getHeight() const;
     size_t getWidth() const;
+    bool isSquare() const;
 
     matrix<ItemType>& resize (size_t height, size_t width, ItemType& val = NULL);
     matrix<ItemType> subMatrix (size_t y, size_t x, size_t h, size_t w);
@@ -86,7 +87,6 @@ public:
     template <class argType>
     matrix<ItemType> elementMultiply (matrix<argType>& M);
 
-    //divide...? I don't quite remember how this works aside from maybe multiplying by the inverse?
     template <class argType>
     matrix<ItemType> divide (matrix<argType>& M);
     template <class argType>

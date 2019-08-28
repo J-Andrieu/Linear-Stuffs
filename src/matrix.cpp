@@ -190,6 +190,7 @@ matrix<ItemType>::~matrix() {
 
 #pragma region Initializers
 // <editor-fold desc="Initializers">
+//{
 /**
 * @brief Fills the matrix with the provided value
 *
@@ -261,11 +262,13 @@ bool matrix<ItemType>::useGPU (bool use_it) {
     }
     return false;
 }
+//}
 // </editor-fold>
 #pragma endregion
 
 #pragma region Setters and Getters
 // <editor-fold desc="Setters and Getters">
+//{
 /**
 * @brief This function returns the value or object stored at the specified position.
 *
@@ -309,6 +312,14 @@ size_t matrix<ItemType>::getHeight() const  {
 template <class ItemType>
 size_t matrix<ItemType>::getWidth() const  {
     return m_width;
+}
+
+/**
+* @brief Returns true of the matrix is square
+*/
+template <class ItemType>
+bool matrix<ItemType>::isSquare() const {
+    return m_height == m_width;
 }
 
 /**
@@ -417,11 +428,13 @@ matrix<ItemType> matrix<ItemType>::identity (size_t height, size_t width) {
     }
     return id;
 }
+//}
 // </editor-fold>
 #pragma endregion
 
 #pragma region Addition Functions
 // <editor-fold desc="Addition Functions">
+//{
 /**
 * @brief Adds two matrices.
 *
@@ -550,11 +563,13 @@ template <class ArgType>
 matrix<ItemType> matrix<ItemType>::operator+ (const ArgType& val) {
     return this->add (val);
 }
+//}
 // </editor-fold>
 #pragma endregion
 
 #pragma region Subtraction Functions
 // <editor-fold desc="Subtraction Functions">
+//{
 /**
 * @brief Subtracts two matrices.
 *
@@ -682,11 +697,13 @@ template <class ArgType>
 matrix<ItemType> matrix<ItemType>::operator- (const ArgType& val) {
     return this->subtract (val);
 }
+//}
 // </editor-fold>
 #pragma endregion
 
 #pragma region Multiplication Functions
 // <editor-fold desc="Multiplication Functions">
+//{
 /**
 * @brief Multiplies two matrices.
 *
@@ -876,14 +893,33 @@ template <class ArgType>
 matrix<ItemType> matrix<ItemType>::operator* (const ArgType& val) {
     return this->multiply (val);
 }
+//}
 // </editor-fold>
 #pragma endregion
 
 #pragma region Division Functions
 // <editor-fold desc="Division Functions">
-/*
-The matrix division function will go here once the matrix inverse is taken care of
+//{
+
+/**
+* @brief Divides a matrix by another
+*
+* @detail It isn't /exactly/ division, it's just multiplying M1 by the inverse of M2... but that's pretty dang similar
+*
+* @return returns a matrix of the same type as the calling matrix
 */
+template <class ItemType>
+template <class ArgType>
+matrix<ItemType> matrix<ItemType>::divide(matrix<ArgType>& M) {
+    if (M.m_height != M.m_width) {
+        return matrix<ItemType>(0, 0);
+    }
+    matrix<ArgType> invM = LinAlgo::inverse(M);
+    if (invM == matrix<ArgType>(0, 0)) {
+        return matrix<ItemType>(0, 0);
+    }
+    return multiply(invM);
+}
 
 /**
 * @brief Divides each element by a single value.
@@ -1000,11 +1036,22 @@ template <class ArgType>
 matrix<ItemType> matrix<ItemType>::operator/ (const ArgType& val) {
     return this->divide (val);
 }
+
+/**
+* @brief Operator overload for matrix::divide()
+*/
+template <class ItemType>
+template <class ArgType>
+matrix<ItemType> matrix<ItemType>::operator/ (matrix<ArgType>& M) {
+    return this->divide (M);
+}
+//}
 // </editor-fold>
 #pragma endregion
 
 #pragma region Linear Algebra Functions
 // <editor-fold desc="Linear Algebra Functions">
+//{
 /**
 * @brief Transposes the matrix
 *
@@ -1029,11 +1076,13 @@ matrix<ItemType>& matrix<ItemType>::transpose() {
     m_gpuSlicesUpToDate.resize (m_height, false);
     return *this;
 }
+//}
 // </editor-fold>
 #pragma endregion
 
 #pragma region Operator Overloads
 // <editor-fold desc="Operator Overloads">
+//{
 /**
 * @brief Using the [] operator will slice a row of the matrix.
 *
@@ -1201,14 +1250,16 @@ bool matrix<ItemType>::operator!= (const matrix<ArgType>& M) const {
     }
     return true;
 }
+//}
 // </editor-fold>
 #pragma endregion
 
 #pragma region Auxilliary Functions for Handling GPU Data
 // <editor-fold desc="Auxilliary Functions for Handling GPU Data">
-
+//{
 #pragma region Initialization Functions
 // <editor-fold desc="Initialization Functions">
+//{
 //private auxilliary function to initialize the OpenCL command queue
 template <class ItemType>
 cl_int matrix<ItemType>::initQueue() {
@@ -1362,11 +1413,13 @@ cl_int matrix<ItemType>::pullFromGPU (cl_command_queue& command_queue) {
     m_upToDate |= dataFlag::GPU_DATA;
     return ret;
 }
+//}
 // </editor-fold>
 #pragma endregion
 
 #pragma region Functions for Executing Kernels
 // <editor-fold desc="Functions for Executing Kernels">
+//{
 //Private function for executing the add kernel
 template <class ItemType>
 cl_int matrix<ItemType>::execute_add_kernel (cl_kernel kernel, matrix<ItemType>& rhs, matrix<ItemType>& result) {
@@ -1500,9 +1553,10 @@ cl_int matrix<ItemType>::execute_array_val_kernel (cl_kernel kernel, ItemType& v
 
     return ret;
 }
+//}
 // </editor-fold>
 #pragma endregion
-
+//}
 // </editor-fold>
 #pragma endregion
 
