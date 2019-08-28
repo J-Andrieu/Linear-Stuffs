@@ -78,8 +78,36 @@ int main(void) {
 		{1, 2, 3, 4},
 		{19, 22, 0, 6},
 		{12, -14, 7, 3} });
+    std::cout << "Original system: " << std::endl;
+    print_matrix<type>(linsys);
+    std::cout << "Solved system: " << std::endl;
 	print_matrix<type>(LinAlgo::gj(linsys));
 	std::cout << std::endl;
+	std::cout << "Inverse of 2x2 matrix:" << std::endl;
+	LinAlgo::matrix<type> invert1({
+		{1, 2},
+		{3, 4} });
+    std::cout << "Original matrix: " << std::endl;
+    print_matrix<type>(invert1);
+    std::cout << "Inverted matrix: " << std::endl;
+	print_matrix<type>(LinAlgo::inverse(invert1));
+	std::cout << std::endl;
+	std::cout << "Inverse of 5x5 matrix:" << std::endl;
+	LinAlgo::matrix<type> invert2({
+		{1, 8, -9, 7, 5},
+		{0, 1, 0, 4, 4},
+		{0, 0, 1, 2, 5},
+		{0, 0, 0, 1, -5},
+		{0, 0, 0, 0, 1} });
+    std::cout << "Original matrix: " << std::endl;
+    print_matrix<type>(invert2);
+    std::cout << "Inverted matrix: " << std::endl;
+	print_matrix<type>(LinAlgo::inverse(invert2));
+	std::cout << std::endl;
+	std::cout << "Inverse of M1:" << std::endl;
+	print_matrix<type>(LinAlgo::inverse(m1));
+	std::cout << "The determinant of M1 is: " << m1.getDeterminant() << std::endl << std::endl;
+
 
 	m1.useGPU(true);
 	m2.useGPU(true);
@@ -170,6 +198,9 @@ int main(void) {
 
 template <class ItemType>
 void print_matrix(const LinAlgo::matrix<ItemType>& M) {
+    if (M.getWidth() == 0) {
+        std::cout << "Null matrix" << std::endl;
+    }
 	if (M.getWidth() < 20) {
 		for (int i = 0; i < M.getHeight(); i++) {
 			for (int j = 0; j < M.getWidth(); j++) {

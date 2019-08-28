@@ -14,15 +14,15 @@
 
 /**
 * @class matrix
-* 
+*
 * @brief The matrix class is a matrix-based storage type
 *
-* @details The matrix class is a templated class which allows the storage of data in 
-* a 2D matrix, this type also allows for general linear algebra operations on arithmetic 
+* @details The matrix class is a templated class which allows the storage of data in
+* a 2D matrix, this type also allows for general linear algebra operations on arithmetic
 * types, as well as gpu support for basic arithmetic types
 *
-* @note In order to use the gpu, LinAlgo::InitGPU() must first be called, then either 
-* LinAlgo::AllUseGPU for all matrices to use the gpu, or individually call m.useGPU() to 
+* @note In order to use the gpu, LinAlgo::InitGPU() must first be called, then either
+* LinAlgo::AllUseGPU for all matrices to use the gpu, or individually call m.useGPU() to
 * allow select matrices
 */
 template <class ItemType>
@@ -31,7 +31,7 @@ public:
 	//constructors
 	matrix(size_t height, size_t width, bool enable_gpu = false);
 	//this one is a little ambiguous b/c of the default...
-	//replacing above and below w/ matrix(size_t h, size_t w, ItemType& val = NULL, bool use_gpu = fase) 
+	//replacing above and below w/ matrix(size_t h, size_t w, ItemType& val = NULL, bool use_gpu = fase)
 	//may be better
 	matrix(size_t height, size_t width, ItemType val, bool enable_gpu = false);
 	matrix(const std::vector<std::vector<ItemType>>& vals, bool enable_gpu = false);
@@ -39,7 +39,7 @@ public:
 	matrix(const matrix<ParamType>& M);
 	matrix(const matrix<ItemType>& M);
 	matrix(matrix<ItemType>&& M);
-	
+
 	//destructor
 	~matrix();//doesn't work, should fix :'(
 
@@ -60,10 +60,10 @@ public:
 	matrix<ItemType> subMatrix(size_t y, size_t x, size_t h, size_t w);
 
 	static matrix<ItemType> identity(size_t height, size_t width = 0);//can't have a width=0 matrix
-	
+
 	//Idk if these should count as getters and setters or not
 	ItemType getDeterminant();
-	
+
 	std::vector<ItemType> getEigenValues();
 	std::vector<ItemType> getEigenVector(ItemType);
 	matrix<ItemType> getEigenVectors();
@@ -85,7 +85,7 @@ public:
 	matrix<ItemType> multiply(const argType& val);
 	template <class argType>
 	matrix<ItemType> elementMultiply(matrix<argType>& M);
-	
+
 	//divide...? I don't quite remember how this works aside from maybe multiplying by the inverse?
 	template <class argType>
 	matrix<ItemType> divide(matrix<argType>& M);
@@ -166,7 +166,7 @@ public:
   template <class ArgType>
 	friend matrix<ArgType> LinAlgo::transpose(const matrix<ArgType>& M);
   template <class ArgType>
-	friend matrix<ArgType> LinAlgo::inverse(const matrix<ArgType>& M);
+	friend matrix<ArgType> LinAlgo::inverse(matrix<ArgType>& M);
 
 	template <class ArgType1, class ArgType2>
 	friend matrix<ArgType1> LinAlgo::map(const matrix<ArgType2>& M, ArgType1(*function)(ArgType2));
@@ -195,6 +195,7 @@ private:
 	std::vector<std::vector<ItemType>*> m_data;
 	size_t m_height;
 	size_t m_width;
+	ItemType m_determinant;
 	std::vector<ItemType> m_eigenValues;//another for vectors?
 
 //are things up to date?
@@ -203,7 +204,7 @@ private:
 		GPU_DATA = 1<<0,
 		GPU_HEIGHT = 1<<1,
 		GPU_WIDTH = 1<<2,
-		DISCRIMINANT = 1<<3,
+		DETERMINANT = 1<<3,
 		EIGENVALUES = 1<<4//things that rely on other things being up to date will need to be unticked an unallocated when other data goes out of date
 	} dataFlag;
 	unsigned char m_upToDate;//use the data flags to mark what is currently up to date
@@ -213,7 +214,7 @@ private:
 	//whether or not i'm allowed to use gpu, or should use cpu instead
 	bool m_useGPU;
 	bool m_leaveOnGPU;//do not pull data from gpu, speeds up performance for chained operations
-	
+
 	//aux functions for the gpu usage
 	cl_int initQueue();//returns CL_SUCCESS is successful
 	cl_int createResultBuffer(cl_command_queue&);//returns CL_SUCCESS if successful
@@ -225,7 +226,7 @@ private:
 	cl_mem m_gpuHeight;
 	cl_mem m_gpuWidth;
 	cl_command_queue m_command_queue;
-	
+
 	//functions to execute the kernels
 	cl_int execute_add_kernel(cl_kernel kernel, matrix<ItemType>& rhs, matrix<ItemType>& result);//so far these two functions are basically exactly the same...
 	cl_int execute_multiply_kernel(cl_kernel kernel, matrix<ItemType>& rhs, matrix<ItemType>& result);//they'll change if the kernel params do, but rn....
@@ -233,4 +234,4 @@ private:
 };
 
 #include "../src/matrix.cpp"
-#endif 
+#endif

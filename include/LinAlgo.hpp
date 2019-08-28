@@ -41,7 +41,7 @@ namespace LinAlgo {
 	template <class ItemType>
 	matrix<ItemType> transpose(const matrix<ItemType>& M);
 	template <class ItemType>
-	matrix<ItemType> inverse(const matrix<ItemType>& M); //requires rre to work efficiently
+	matrix<ItemType> inverse(matrix<ItemType>& M); //requires rre to work efficiently, not const due to determinant
 
 	template <class ArgType, class ItemType = ArgType>
 	matrix<ArgType> map(const matrix<ItemType>& M, ArgType(*function)(ItemType));
@@ -121,15 +121,15 @@ namespace LinAlgo {
             //printf("V %s %f\n", version, OPENCL_VERSION);
 		}
 
-		int choosePlatform(cl_platform_id* platform_id, int numPlatforms, float preferredOCLVersion) {
+		int choosePlatform(cl_platform_id* platform_id, size_t numPlatforms, float preferredOCLVersion) {
 		    float versions[numPlatforms];
-            for (int i = 0; i < numPlatforms; i++) {
+            for (size_t i = 0; i < numPlatforms; i++) {
                 versions[i] = getPlatformVersion(platform_id[i]);
                 if (versions[i] == preferredOCLVersion) {
                     return i;
                 }
             }
-            for (int i = 0; i < numPlatforms; i++) {
+            for (size_t i = 0; i < numPlatforms; i++) {
                 if (std::floor(versions[i]) == std::floor(preferredOCLVersion)) {
                     return i;
                 }
@@ -218,9 +218,11 @@ static cl_int LinAlgo::InitGPU() {
             printf("Warning: No OpenCL device available\n");
             return ret;
         } else {
+            printf("CPU device chosen\n");
             ret = clGetDeviceIDs(m_platform_id[platform_index], CL_DEVICE_TYPE_CPU, 1, &m_device_id, &ret_num_devices);
         }
 	} else {
+	    printf("GPU device chosen\n");
         ret = clGetDeviceIDs(m_platform_id[platform_index], CL_DEVICE_TYPE_GPU, 1, &m_device_id, &ret_num_devices);
 	}
 
@@ -378,6 +380,50 @@ LinAlgo::matrix<ItemType> LinAlgo::transpose(const LinAlgo::matrix<ItemType>& M)
 		}
 	}
 	return result;
+}
+
+/**
+* @brief Non-overwriting matrix inverse
+*
+* @detail Uses gauss-jordan elimination after a threshold to maintain efficiency
+*/
+template <class ItemType>
+LinAlgo::matrix<ItemType> LinAlgo::inverse(matrix<ItemType>& M) {//would be const, but matrix::getDeterminant() sets the determinant if it isn't already
+    if (M.m_height != M.m_width) {
+        return matrix<ItemType>(0, 0);
+    } else if (M.m_height == 1) {
+        matrix<ItemType> ret(M);
+        if ((*M.m_data[0])[0] == 0) {
+            return matrix<ItemType>(0,0);
+        }
+        (*ret.m_data[0])[0] = 1 / (*ret.m_data[0])[0];
+        return ret;
+    } else if (M.m_height == 2) {
+        matrix<ItemType> ret(M.m_height, M.m_height);
+        ItemType det = M.getDeterminant();
+        if (det == 0) {
+            return matrix<ItemType>(0,0);
+        }
+        (*ret.m_data[0])[0] = (*M.m_data[1])[1];
+        (*ret.m_data[1])[1] = (*M.m_data[0])[0];
+        (*ret.m_data[0])[1] = -1 * (*M.m_data[0])[1];
+        (*ret.m_data[1])[0] = -1 * (*M.m_data[1])[0];
+        return ret / det;
+    } else {
+        if (M.getDeterminant() == 0) {
+            printf("The determinant was 0\n");
+            return matrix<ItemType>(0,0);
+        }
+        matrix<ItemType> augmented(M.m_height, M.m_width * 2, 0, M.m_useGPU);
+        for (size_t i = 0; i < augmented.m_height; i++) {
+            (*augmented.m_data[i])[i + M.m_width] = 1;
+            for (size_t j = 0; j < M.m_width; j++) {
+                (*augmented.m_data[i])[j] = (*M.m_data[i])[j];
+            }
+        }
+        //augmented.gj();
+        return gj(augmented).subMatrix(0, M.m_width, M.m_height, M.m_width);
+    }
 }
 
 /**

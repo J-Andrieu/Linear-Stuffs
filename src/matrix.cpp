@@ -312,6 +312,33 @@ size_t matrix<ItemType>::getWidth() const  {
 }
 
 /**
+* @brief Returns the determinant
+*
+* @detail Will calculate the determinant if it hasn't been done already
+*/
+template <class ItemType>
+ItemType matrix<ItemType>::getDeterminant() {
+    if (m_upToDate & dataFlag::DETERMINANT) {
+        return m_determinant;
+    }
+    if (m_height != m_width) {
+        m_determinant = 0;//no determinant
+    } else if (m_height == 1) {
+        m_determinant = (*m_data[0])[0];
+    } else if (m_height == 2) {
+        m_determinant = (*m_data[0])[0] * (*m_data[1])[1] - (*m_data[0])[1] * (*m_data[1])[0];
+    } else {
+        matrix<ItemType> detMat(LinAlgo::re(*this));
+        m_determinant = (ItemType) 1;
+        for (size_t i = 0; i < detMat.m_height; i++) {
+            m_determinant *= (*detMat.m_data[i])[i];
+        }
+    }
+    m_upToDate |= dataFlag::DETERMINANT;
+    return m_determinant;
+}
+
+/**
 * @brief Resizes the calling matrix
 *
 * @detail This resizes the matrix to the given height and width.
@@ -364,7 +391,7 @@ matrix<ItemType>& matrix<ItemType>::resize(size_t height, size_t width, ItemType
 */
 template <class ItemType>
 matrix<ItemType> matrix<ItemType>::subMatrix(size_t y, size_t x, size_t h, size_t w) {
-	if (y >= m_height || x >= m_width || y + h >= m_height || x + w >= m_width) {
+	if (y >= m_height || x >= m_width || y + h > m_height || x + w > m_width) {
 		return matrix<ItemType>(0,0);
 	}
 	matrix<ItemType> result(h, w);
@@ -621,17 +648,17 @@ matrix<ItemType> matrix<ItemType>::subtract(const ArgType& val) {
 		result.createResultBuffer(m_command_queue);
 		cl_int ret; //i'm not even kinda checking this rn, but maybe i will later :P
 		if (std::is_same<ItemType, char>::value) {
-			ret = execute_array_val_kernel(m_charKernels[Kernel::SUB_SCALAR], ItemType(val), result);
+			ret = execute_array_val_kernel(m_charKernels[Kernel::SUB_SCALAR], (ItemType&) val, result);
 		} else if (std::is_same<ItemType, short>::value) {
-			ret = execute_array_val_kernel(m_shortKernels[Kernel::SUB_SCALAR], ItemType(val), result);
+			ret = execute_array_val_kernel(m_shortKernels[Kernel::SUB_SCALAR], (ItemType&) val, result);
 		}else if (std::is_same<ItemType, int>::value) {
-			ret = execute_array_val_kernel(m_intKernels[Kernel::SUB_SCALAR], ItemType(val), result);
+			ret = execute_array_val_kernel(m_intKernels[Kernel::SUB_SCALAR], (ItemType&) val, result);
 		} else if (std::is_same<ItemType, long>::value) {
-			ret = execute_array_val_kernel(m_longKernels[Kernel::SUB_SCALAR], ItemType(val), result);
+			ret = execute_array_val_kernel(m_longKernels[Kernel::SUB_SCALAR], (ItemType&) val, result);
 		} else if (std::is_same<ItemType, float>::value) {
-			ret = execute_array_val_kernel(m_floatKernels[Kernel::SUB_SCALAR], ItemType(val), result);
+			ret = execute_array_val_kernel(m_floatKernels[Kernel::SUB_SCALAR], (ItemType&) val, result);
 		} else if (std::is_same<ItemType, double>::value) {
-			ret = execute_array_val_kernel(m_doubleKernels[Kernel::SUB_SCALAR], ItemType(val), result);
+			ret = execute_array_val_kernel(m_doubleKernels[Kernel::SUB_SCALAR], (ItemType&) val, result);
 		} else {
 			printf("Can't GPU compute, unsupported item type.\n");
 		}
@@ -761,17 +788,17 @@ matrix<ItemType> matrix<ItemType>::multiply(const ArgType& val) {
 		result.createResultBuffer(m_command_queue);
 		cl_int ret; //i'm not even kinda checking this rn, but maybe i will later :P
 		if (std::is_same<ItemType, char>::value) {
-			ret = execute_array_val_kernel(m_charKernels[Kernel::MULTIPLY_SCALAR], ItemType(val), result);
+			ret = execute_array_val_kernel(m_charKernels[Kernel::MULTIPLY_SCALAR], (ItemType&) val, result);
 		} else if (std::is_same<ItemType, short>::value) {
-			ret = execute_array_val_kernel(m_shortKernels[Kernel::MULTIPLY_SCALAR], ItemType(val), result);
+			ret = execute_array_val_kernel(m_shortKernels[Kernel::MULTIPLY_SCALAR], (ItemType&) val, result);
 		} else if (std::is_same<ItemType, int>::value) {
-			ret = execute_array_val_kernel(m_intKernels[Kernel::MULTIPLY_SCALAR], ItemType(val), result);
+			ret = execute_array_val_kernel(m_intKernels[Kernel::MULTIPLY_SCALAR], (ItemType&) val, result);
 		} else if (std::is_same<ItemType, long>::value) {
-			ret = execute_array_val_kernel(m_longKernels[Kernel::MULTIPLY_SCALAR], ItemType(val), result);
+			ret = execute_array_val_kernel(m_longKernels[Kernel::MULTIPLY_SCALAR], (ItemType&) val, result);
 		} else if (std::is_same<ItemType, float>::value) {
-			ret = execute_array_val_kernel(m_floatKernels[Kernel::MULTIPLY_SCALAR], ItemType(val), result);
+			ret = execute_array_val_kernel(m_floatKernels[Kernel::MULTIPLY_SCALAR], (ItemType&) val, result);
 		} else if (std::is_same<ItemType, double>::value) {
-			ret = execute_array_val_kernel(m_doubleKernels[Kernel::MULTIPLY_SCALAR], ItemType(val), result);
+			ret = execute_array_val_kernel(m_doubleKernels[Kernel::MULTIPLY_SCALAR], (ItemType&) val, result);
 		} else {
 			printf("Can't GPU compute, unsupported item type.\n");
 		}
@@ -862,7 +889,7 @@ matrix<ItemType> matrix<ItemType>::operator*(matrix<ArgType>& M) {
 template <class ItemType>
 template <class ArgType>
 matrix<ItemType> matrix<ItemType>::operator*(const ArgType& val) {
-	return this->multiply(val);
+    return this->multiply(val);
 }
 // </editor-fold>
 #pragma endregion
@@ -903,17 +930,17 @@ matrix<ItemType> matrix<ItemType>::divide(const ArgType& val) {
 		result.createResultBuffer(m_command_queue);
 		cl_int ret; //i'm not even kinda checking this rn, but maybe i will later :P
 		if (std::is_same<ItemType, char>::value) {
-			ret = execute_array_val_kernel(m_charKernels[Kernel::DIVIDE_SCALAR], ItemType(val), result);
+			ret = execute_array_val_kernel(m_charKernels[Kernel::DIVIDE_SCALAR], (ItemType&) val, result);
 		} else if (std::is_same<ItemType, short>::value) {
-			ret = execute_array_val_kernel(m_shortKernels[Kernel::DIVIDE_SCALAR], ItemType(val), result);
+			ret = execute_array_val_kernel(m_shortKernels[Kernel::DIVIDE_SCALAR], (ItemType&) val, result);
 		} else if (std::is_same<ItemType, int>::value) {
-			ret = execute_array_val_kernel(m_intKernels[Kernel::DIVIDE_SCALAR], ItemType(val), result);
+			ret = execute_array_val_kernel(m_intKernels[Kernel::DIVIDE_SCALAR], (ItemType&) val, result);
 		} else if (std::is_same<ItemType, long>::value) {
-			ret = execute_array_val_kernel(m_longKernels[Kernel::DIVIDE_SCALAR], ItemType(val), result);
+			ret = execute_array_val_kernel(m_longKernels[Kernel::DIVIDE_SCALAR], (ItemType&) val, result);
 		} else if (std::is_same<ItemType, float>::value) {
-			ret = execute_array_val_kernel(m_floatKernels[Kernel::DIVIDE_SCALAR], ItemType(val), result);
+			ret = execute_array_val_kernel(m_floatKernels[Kernel::DIVIDE_SCALAR], (ItemType&) val, result);
 		} else if (std::is_same<ItemType, double>::value) {
-			ret = execute_array_val_kernel(m_doubleKernels[Kernel::DIVIDE_SCALAR], ItemType(val), result);
+			ret = execute_array_val_kernel(m_doubleKernels[Kernel::DIVIDE_SCALAR], (ItemType&) val, result);
 		} else {
 			printf("Can't GPU compute, unsupported item type.\n");
 		}
@@ -1154,6 +1181,7 @@ matrix<ItemType>& matrix<ItemType>::operator=(matrix<ItemType>&& M) {
 	m_leaveOnGPU = M.m_leaveOnGPU;
 	m_gpuUpToDate = M.m_gpuUpToDate;
 	m_gpuSlicesUpToDate = M.m_gpuSlicesUpToDate;
+	return *this;
 }
 
 /**
