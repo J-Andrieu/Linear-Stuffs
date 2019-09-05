@@ -4,6 +4,8 @@
 * @brief Implements the matrix class.
 */
 
+//once kernels are finalized the template and type-specific macros will be stored in here, and the kernels will generated when the gpu is initialized
+
 #ifndef _MATRIX_INCLUDED
 #define _MATRIX_INCLUDED
 #include "../include/matrix.h"
@@ -339,10 +341,14 @@ ItemType matrix<ItemType>::getDeterminant() {
     } else if (m_height == 2) {
         m_determinant = (*m_data[0])[0] * (*m_data[1])[1] - (*m_data[0])[1] * (*m_data[1])[0];
     } else {
-        matrix<ItemType> detMat (LinAlgo::re (*this));
+        int row_swaps;
+        matrix<ItemType> detMat (LinAlgo::re (*this, row_swaps));
         m_determinant = (ItemType) 1;
         for (size_t i = 0; i < detMat.m_height; i++) {
             m_determinant *= (*detMat.m_data[i])[i];
+        }
+        if (row_swaps % 2 != 0) {
+            m_determinant *= -1;
         }
     }
     m_upToDate |= dataFlag::DETERMINANT;
@@ -428,6 +434,27 @@ matrix<ItemType> matrix<ItemType>::identity (size_t height, size_t width) {
     }
     return id;
 }
+
+template <class ItemType>
+matrix<ItemType>::iterator<const ItemType> matrix<ItemType>::cbegin() {
+    return iterator<const ItemType>(0, 0, m_width * m_height - 1, m_width, &m_data);
+}
+
+template <class ItemType>
+matrix<ItemType>::iterator<const ItemType> matrix<ItemType>::cend() {
+    return iterator<const ItemType>(m_width * m_height - 1, 0, m_width * m_height - 1, m_width, &m_data);
+}
+
+template <class ItemType>
+matrix<ItemType>::iterator<ItemType> matrix<ItemType>::begin() {
+    return iterator<ItemType>(0, 0, m_width * m_height - 1, m_width, &m_data);
+}
+
+template <class ItemType>
+matrix<ItemType>::iterator<ItemType> matrix<ItemType>::end() {
+    return iterator<ItemType>(m_width * m_height - 1, 0, m_width * m_height - 1, m_width, &m_data);
+}
+
 //}
 // </editor-fold>
 #pragma endregion

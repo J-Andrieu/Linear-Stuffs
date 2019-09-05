@@ -34,149 +34,158 @@
 */
 namespace LinAlgo {
 //the all importan matrix class
-template <class ItemType>
-class matrix;
+    template <class ItemType>
+    class matrix;
+
+    matrix<double> identityMatrix(size_t N);
+    template <class ItemType>
+    matrix<ItemType> columnVector(std::vector<ItemType> vec);
+    //these aren't going to be terribly efficient, especially for the small vectors one would normally use these on
+    //glm is a much better option for creating rotation/translation/scale matrices
+    matrix<double> rotationMatrix(size_t N, std::vector<double> angles);
+    matrix<double> translationMatrix(size_t N, std::vector<double> direction);
+    matrix<double> scaleMatrix(size_t N, std::vector<double> scale);
 
 //linear algebra functions? how fun :P
-template <class ItemType>
-matrix<ItemType> transpose (const matrix<ItemType>& M);
-template <class ItemType>
-matrix<ItemType> inverse (matrix<ItemType>& M); //requires rre to work efficiently, not const due to determinant
+    template <class ItemType>
+    matrix<ItemType> transpose (const matrix<ItemType>& M);
+    template <class ItemType>
+    matrix<ItemType> inverse (matrix<ItemType>& M); //requires rre to work efficiently, not const due to determinant
 
-template <class ArgType, class ItemType = ArgType>
-matrix<ArgType> map (const matrix<ItemType>& M, ArgType (*function) (ItemType));
+    template <class ArgType, class ItemType = ArgType>
+    matrix<ArgType> map (const matrix<ItemType>& M, ArgType (*function) (ItemType));
 //due to updating gpu data counting as cahnging the matrix, I can't
 //actually have these be const :'(
-template <class ItemType>
-matrix<ItemType> map (const matrix<ItemType>& M, std::string kernel, cl_int& error_ret);
-template <class ItemType>
-matrix<ItemType> map (const matrix<ItemType>& M, cl_kernel kernel, cl_int& error_ret);
+    template <class ItemType>
+    matrix<ItemType> map (const matrix<ItemType>& M, std::string kernel, cl_int& error_ret);
+    template <class ItemType>
+    matrix<ItemType> map (const matrix<ItemType>& M, cl_kernel kernel, cl_int& error_ret);
 
 
-template <class ItemType>
-bool qr (const matrix<ItemType>& M, matrix<ItemType>& Q, matrix<ItemType>& R); //returns if it was successful i guess
+    template <class ItemType>
+    bool qr (const matrix<ItemType>& M, matrix<ItemType>& Q, matrix<ItemType>& R); //returns if it was successful i guess
 
-template <class ItemType>
-matrix<ItemType> solve (const matrix<ItemType>&); //solve a system of linear equations
-template <class ItemType>
-matrix<ItemType> gj (const matrix<ItemType>&); //Gauss-Jordan elimination
-template <class ItemType>
-matrix<ItemType> re (const matrix<ItemType>& M); //Row Echelon form
-template <class ItemType>
-matrix<ItemType> rre (const matrix<ItemType>&); //Reduced Row Echelon form
+    template <class ItemType>
+    matrix<ItemType> gj (const matrix<ItemType>&); //Gauss-Jordan elimination
+    template <class ItemType>
+    matrix<ItemType> re (const matrix<ItemType>& M); //Row Echelon form
+    template <class ItemType>
+    matrix<ItemType> re (const matrix<ItemType>& M, int& row_swaps);
+    template <class ItemType>
+    matrix<ItemType> rre (const matrix<ItemType>&); //Reduced Row Echelon form
 
 
 //functions and such for dealing with the gpu
-static cl_int InitGPU();
-static bool BreakDownGPU();
-static bool AllUseGPU (bool use_it);
-static bool IsGPUInitialized();
+    static cl_int InitGPU();
+    static bool BreakDownGPU();
+    static bool AllUseGPU (bool use_it);
+    static bool IsGPUInitialized();
 
 //these will allow users to generate kernels
-static const cl_platform_id retrievePlatformID();
-static const cl_device_id retrieveDeviceID();
-static const cl_context retrieveContext();
+    static const cl_platform_id retrievePlatformID();
+    static const cl_device_id retrieveDeviceID();
+    static const cl_context retrieveContext();
 
-namespace {
+    namespace {
 //private functions
-//auxillary function for loading kernel files and returning a program
-cl_program create_program (std::string filename, cl_context context, cl_int* errcode_ret) {
-    //first load the source code
-    std::ifstream file;
-    file.open (filename.c_str(), std::ios::in);
-    if (file.bad()) {
-        printf ("Failed to load kernel.cl!\n");
-    }
-    std::string line;
-    std::string kernel_src;
-    while (std::getline (file, line)) {
-        kernel_src += line;
-        kernel_src += '\n';
-    }
-    //printf("Kernel source: \n%s", kernel_src.c_str());
-    const size_t* kernel_size = new size_t (kernel_src.size());
-    //if (kernel_size == 0) {
-    //  printf("Did not load kernel!\n");
-    //}
-    const char* kernel_str = kernel_src.c_str();
-    file.close();
+        //auxillary function for loading kernel files and returning a program
+        cl_program create_program (std::string filename, cl_context context, cl_int* errcode_ret) {
+            //first load the source code
+            std::ifstream file;
+            file.open (filename.c_str(), std::ios::in);
+            if (file.bad()) {
+                printf ("Failed to load kernel.cl!\n");
+            }
+            std::string line;
+            std::string kernel_src;
+            while (std::getline (file, line)) {
+                kernel_src += line;
+                kernel_src += '\n';
+            }
+            //printf("Kernel source: \n%s", kernel_src.c_str());
+            const size_t* kernel_size = new size_t (kernel_src.size());
+            //if (kernel_size == 0) {
+            //  printf("Did not load kernel!\n");
+            //}
+            const char* kernel_str = kernel_src.c_str();
+            file.close();
 
-    //then create the program
-    cl_program program = clCreateProgramWithSource (context, 1, &kernel_str, kernel_size, errcode_ret);
-    return program;
-}
+            //then create the program
+            cl_program program = clCreateProgramWithSource (context, 1, &kernel_str, kernel_size, errcode_ret);
+            return program;
+        }
 
-float getPlatformVersion (cl_platform_id platform_id) {
-    //evaluate opencl version
+        float getPlatformVersion (cl_platform_id platform_id) {
+            //evaluate opencl version
 #define VERSION_LENGTH 64
-    char complete_version[VERSION_LENGTH];
-    size_t realSize = 0;
-    clGetPlatformInfo (platform_id, CL_PLATFORM_VERSION, VERSION_LENGTH,
-                       &complete_version, &realSize);
-    char version[4];
-    version[3] = 0;
-    //printf("%s\n", complete_version);
-    std::copy (complete_version + 7, complete_version + 11, version);
-    return atof (version);
-    //printf("V %s %f\n", version, OPENCL_VERSION);
-}
+            char complete_version[VERSION_LENGTH];
+            size_t realSize = 0;
+            clGetPlatformInfo (platform_id, CL_PLATFORM_VERSION, VERSION_LENGTH,
+                               &complete_version, &realSize);
+            char version[4];
+            version[3] = 0;
+            //printf("%s\n", complete_version);
+            std::copy (complete_version + 7, complete_version + 11, version);
+            return atof (version);
+            //printf("V %s %f\n", version, OPENCL_VERSION);
+        }
 
-int choosePlatform (cl_platform_id* platform_id, size_t numPlatforms, float preferredOCLVersion) {
-    float versions[numPlatforms];
-    for (size_t i = 0; i < numPlatforms; i++) {
-        versions[i] = getPlatformVersion (platform_id[i]);
-        if (versions[i] == preferredOCLVersion) {
-            return i;
+        int choosePlatform (cl_platform_id* platform_id, size_t numPlatforms, float preferredOCLVersion) {
+            float versions[numPlatforms];
+            for (size_t i = 0; i < numPlatforms; i++) {
+                versions[i] = getPlatformVersion (platform_id[i]);
+                if (versions[i] == preferredOCLVersion) {
+                    return i;
+                }
+            }
+            for (size_t i = 0; i < numPlatforms; i++) {
+                if (std::floor (versions[i]) == std::floor (preferredOCLVersion)) {
+                    return i;
+                }
+            }
+            return 0;
         }
-    }
-    for (size_t i = 0; i < numPlatforms; i++) {
-        if (std::floor (versions[i]) == std::floor (preferredOCLVersion)) {
-            return i;
-        }
-    }
-    return 0;
-}
 
 //private variables
-bool GPU_INITIALIZED = false;
-bool ALL_USE_GPU = false;
-float OPENCL_VERSION = 0.0f;
+        bool GPU_INITIALIZED = false;
+        bool ALL_USE_GPU = false;
+        float OPENCL_VERSION = 0.0f;
 
-typedef enum {
-    ADD,
-    ADD_SCALAR,
-    SUB,
-    SUB_SCALAR,
-    MULTIPLY,
-    MULTIPLY_SCALAR,
-    MULTIPLY_ELEMENT,
-    DIVIDE_SCALAR,
-    DIVIDE_ELEMENT,
-    NUM_KERNELS
-} Kernel;
+        typedef enum {
+            ADD,
+            ADD_SCALAR,
+            SUB,
+            SUB_SCALAR,
+            MULTIPLY,
+            MULTIPLY_SCALAR,
+            MULTIPLY_ELEMENT,
+            DIVIDE_SCALAR,
+            DIVIDE_ELEMENT,
+            NUM_KERNELS
+        } Kernel;
 
-typedef enum {
-    CHAR,
-    SHORT,
-    INT,
-    LONG,
-    FLOAT,
-    DOUBLE,
-    NUM_TYPES
-} KernelType;
+        typedef enum {
+            CHAR,
+            SHORT,
+            INT,
+            LONG,
+            FLOAT,
+            DOUBLE,
+            NUM_TYPES
+        } KernelType;
 
-cl_kernel m_charKernels[Kernel::NUM_KERNELS] = { NULL };
-cl_kernel m_shortKernels[Kernel::NUM_KERNELS] = { NULL };
-cl_kernel m_intKernels[Kernel::NUM_KERNELS] = { NULL };
-cl_kernel m_longKernels[Kernel::NUM_KERNELS] = { NULL };
-cl_kernel m_floatKernels[Kernel::NUM_KERNELS] = { NULL };
-cl_kernel m_doubleKernels[Kernel::NUM_KERNELS] = { NULL };
-cl_kernel* m_Kernels[KernelType::NUM_TYPES] = { m_charKernels, m_shortKernels, m_intKernels, m_longKernels, m_floatKernels, m_doubleKernels };
+        cl_kernel m_charKernels[Kernel::NUM_KERNELS] = { NULL };
+        cl_kernel m_shortKernels[Kernel::NUM_KERNELS] = { NULL };
+        cl_kernel m_intKernels[Kernel::NUM_KERNELS] = { NULL };
+        cl_kernel m_longKernels[Kernel::NUM_KERNELS] = { NULL };
+        cl_kernel m_floatKernels[Kernel::NUM_KERNELS] = { NULL };
+        cl_kernel m_doubleKernels[Kernel::NUM_KERNELS] = { NULL };
+        cl_kernel* m_Kernels[KernelType::NUM_TYPES] = { m_charKernels, m_shortKernels, m_intKernels, m_longKernels, m_floatKernels, m_doubleKernels };
 
-cl_platform_id* m_platform_id = NULL;
-cl_device_id m_device_id = NULL;
-cl_context m_context = NULL;
-}
+        cl_platform_id* m_platform_id = NULL;
+        cl_device_id m_device_id = NULL;
+        cl_context m_context = NULL;
+    }
 }
 
 #pragma region GPU Functions
@@ -253,7 +262,6 @@ static cl_int LinAlgo::InitGPU() {
                                          std::string ("matrix_kernels_") +
                                          type_str[type] +
                                          std::string (".cl"),
-
                                          m_context,
                                          &ret);
         if (ret != CL_SUCCESS) {
@@ -481,6 +489,66 @@ LinAlgo::matrix<ItemType> LinAlgo::re (const LinAlgo::matrix<ItemType>& M) {
                         if (j != pivotRow) {
                             //swap the pivot row with the current row
                             result.m_data[pivotRow]->swap (*result.m_data[j]);
+                        }
+                    }
+                }
+            }
+            if (!pivotFound) {
+                //advance pivot column. go to start of loop
+                pivotRow--;
+                continue;
+            }
+
+            //eliminate below pivot
+            pivot = (*result.m_data[pivotRow])[pivotColumn];
+            for (size_t j = pivotRow + 1; j < result.m_height; j++) {
+                scalar = (*result.m_data[j])[pivotColumn] / pivot;
+                for (size_t k = pivotColumn; k < result.m_width; k++) {
+                    (*result.m_data[j])[k] -= (*result.m_data[pivotRow])[k] * scalar;
+                }
+            }
+        }
+    }
+    return result;
+}
+
+/**
+* @brief Non-overwriting row-echelon
+*
+* @details returns the row-echelon form of a matrix without overwriting the original, this one also counts row swaps for calculating the determinant
+*/
+template <class ItemType>
+LinAlgo::matrix<ItemType> LinAlgo::re (const LinAlgo::matrix<ItemType>& M, int& row_swaps) {
+    matrix<ItemType> result (M);
+    row_swaps = 0;
+    if (false) {
+        //use gpu vector addition
+    } else {
+        bool pivotFound = false;
+        bool nonZeroExists = false;
+
+        size_t numPivots = result.m_height > result.m_width ? result.m_width : result.m_height;
+        size_t pivotColumn = 0, pivotRow = 0;
+        ItemType pivot;
+        ItemType scalar;
+
+        //time to get it to row echelon form
+        for (size_t i = 0; i < numPivots; i++, pivotColumn++, pivotRow++) {
+            if (pivotRow > result.m_height - 1 || pivotColumn > result.m_width - 1) {
+                break;//break if pivot location is outside matrix, or in the last column
+            }
+
+            //find or create the pivot
+            pivotFound = true;
+            if ((*result.m_data[pivotRow])[pivotColumn] == 0) {
+                pivotFound = false;
+                for (size_t j = pivotRow; j < result.m_height; j++) {
+                    if ((*result.m_data[j])[pivotColumn] != 0) {
+                        pivotFound = true;
+                        if (j != pivotRow) {
+                            //swap the pivot row with the current row
+                            result.m_data[pivotRow]->swap (*result.m_data[j]);
+                            row_swaps++;
                         }
                     }
                 }

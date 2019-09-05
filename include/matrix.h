@@ -59,6 +59,10 @@ public:
 
     matrix<ItemType>& resize (size_t height, size_t width, ItemType& val = NULL);
     matrix<ItemType> subMatrix (size_t y, size_t x, size_t h, size_t w);
+    matrix<ItemType>& copy(size_t y, size_t x, matrix<ItemType>);//coordinates are position to copy into in order to copy a smaller matrix into a select part
+
+    std::vector<ItemType> getRow(size_t r);
+    std::vector<ItemType> getColumn(size_t c);
 
     static matrix<ItemType> identity (size_t height, size_t width = 0); //can't have a width=0 matrix
 
@@ -181,15 +185,153 @@ public:
     friend bool LinAlgo::qr (const matrix<ArgType>& M, matrix<ArgType>& Q, matrix<ArgType>& R);
 
     template <class ArgType>
-    friend matrix<ArgType> LinAlgo::solve (const matrix<ArgType>& M);
-    template <class ArgType>
     friend matrix<ArgType> LinAlgo::gj (const matrix<ArgType>& M);
     template <class ArgType>
     friend matrix<ArgType> LinAlgo::re (const matrix<ArgType>& M);
     template <class ArgType>
+    friend matrix<ArgType> LinAlgo::re (const matrix<ArgType>& M, int& row_swaps);
+    template <class ArgType>
     friend matrix<ArgType> LinAlgo::rre (const matrix<ArgType>& M);
 
-    //iterators?
+    //iterators
+    template <typename ptr_type>
+    class iterator {
+    public:
+        using iterator_category = std::random_access_iterator_tag;
+        using value_type = ptr_type;
+        using difference_type = std::ptrdiff_t;
+        using pointer = ptr_type*;
+        using reference = ptr_type&;
+
+        iterator(long int index, size_t _min, size_t _max, size_t _width, std::vector<std::vector<ItemType>*>* _data) : m_index(index), m_min(_min), m_max(_max), mat_width(_width), mat_data(_data) {
+            //assert index between min and max
+        }
+        iterator(const iterator<ptr_type>& other) {
+            m_index = other.m_index;
+            m_min = other.m_min;
+            m_max = other.m_max;
+            mat_width = other.mat_width;
+            mat_data = other.mat_data;
+        }
+
+        //increment/decrement
+        iterator<ptr_type>& operator++() {
+            m_index++;
+            //assert in range
+            return *this;
+        }
+        iterator<ptr_type>& operator++(int) {
+            iterator<ptr_type> ret = *this;
+            ++(*this);
+            return ret;
+        }
+        iterator<ptr_type>& operator--() {
+            m_index--;
+            //assert
+            return *this;
+        }
+        iterator<ptr_type>& operator--(int) {
+            iterator<ptr_type> ret = *this;
+            --(*this);
+            //assert
+            return ret;
+        }
+
+        iterator<ptr_type> operator+(const iterator<ptr_type>& other) {
+            iterator<ptr_type> ret(m_index + other.m_index, m_min, m_max, mat_width, mat_data);
+            return ret;
+        }
+        iterator<ptr_type> operator+(const long int& rhs) {
+            return iterator<ptr_type>(m_index + rhs, m_min, m_max, mat_width, mat_data);
+        }
+        friend iterator<ptr_type> operator+(const long int& lhs, const iterator<ptr_type>& rhs) {
+            return rhs+lhs;
+        }
+        difference_type operator-(const iterator<ptr_type>& other) {
+            return m_index - other.m_index;
+        }
+        iterator<ptr_type> operator-(const long int& rhs) {
+            return iterator<ptr_type>(m_index - rhs, m_min, m_max, mat_width, mat_data);
+        }
+        friend iterator<ptr_type> operator-(const long int& lhs, const iterator<ptr_type>& rhs) {
+            return rhs-lhs;
+        }
+
+        iterator<ptr_type>& operator=(const iterator<ptr_type>& rhs) {
+            m_index = rhs.m_index;
+            m_min = rhs.m_min;
+            m_max = rhs.m_max;
+            mat_width = rhs.mat_width;
+            mat_data = rhs.mat_data;
+            return *this;
+        }
+        iterator<ptr_type>& operator+=(const iterator<ptr_type>& rhs) {
+            return *this = *this + rhs;
+        }
+        iterator<ptr_type>& operator+=(const long int& rhs) {
+            return *this = *this + rhs;
+        }
+        iterator<ptr_type>& operator-=(const iterator<ptr_type>& rhs) {
+            return *this = *this - rhs;
+        }
+        iterator<ptr_type>& operator-=(const long int& rhs) {
+            return *this = *this - rhs;
+        }
+
+        //evaluation
+        bool operator==(const iterator<ptr_type>& other) const {
+            return other.mat_data == mat_data && other.m_index == m_index;
+        }
+        bool operator!=(const iterator<ptr_type>& other) const {
+            return other.mat_data != mat_data || other.m_index != m_index;
+        }
+        bool operator<(const iterator<ptr_type>& other) const {
+            return m_index < other.m_index;
+        }
+        bool operator<=(const iterator<ptr_type>& other) const {
+            return m_index <= other.m_index;
+        }
+        bool operator>(const iterator<ptr_type>& other) const {
+            return m_index > other.m_index;
+        }
+
+        bool operator>=(const iterator<ptr_type>& other) const {
+            return m_index >= other.m_index;
+        }
+
+        //access
+        iterator<ptr_type>& operator=(const ItemType& item) {
+            (*(*mat_data)[m_index/mat_width])[m_index%mat_width] = item;
+            return *this;
+        }
+        reference operator*() const {
+            return (reference) (*(*mat_data)[m_index/mat_width])[m_index%mat_width];
+        }
+        pointer operator->() {
+            return (ptr_type) &(*(*mat_data)[m_index/mat_width])[m_index%mat_width];
+        }
+        reference operator[](const size_t index) const {
+            //assert m_index + index
+            size_t pos = m_index + index;
+            return (reference) (*(*mat_data)[pos/mat_width])[pos%mat_width];
+        }
+
+    private:
+        std::vector<std::vector<ItemType>*>* mat_data;
+        size_t mat_width;
+        long int m_index;//so that can check negative index
+        size_t m_min;
+        size_t m_max;
+    };
+
+    iterator<const ItemType> cbegin();
+    iterator<const ItemType> cend();
+
+    iterator<ItemType> begin();
+    iterator<ItemType> end();
+
+
+
 private:
 //basic data
     std::vector<std::vector<ItemType>*> m_data;
@@ -218,8 +360,8 @@ private:
     //aux functions for the gpu usage
     cl_int initQueue();//returns CL_SUCCESS is successful
     cl_int createResultBuffer (cl_command_queue&); //returns CL_SUCCESS if successful
-    cl_int pushToGPU (cl_command_queue&); //returns CL_SUCCESS is successful
-    cl_int pullFromGPU (cl_command_queue&); //returns CL_SUCCESS is successful
+    cl_int pushToGPU (cl_command_queue&); //returns CL_SUCCESS if successful
+    cl_int pullFromGPU (cl_command_queue&); //returns CL_SUCCESS if successful
 
     //data involved in the gpu computation
     cl_mem m_gpuData;

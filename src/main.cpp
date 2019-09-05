@@ -12,14 +12,15 @@
 #include <string>
 #include <sstream>
 #include <tuple>
+#include <algorithm>
 
 #include "../include/LinAlgo.hpp"
 #include "../include/Timer.h"
 
 //less than 25x25 causes bsod with the destructor uncommented for some reason
-const int HEIGHT = 15;
-const int WIDTH = 5;
-typedef float type;
+const int HEIGHT = 10;
+const int WIDTH = 10;
+typedef double type;
 
 template <class ItemType>
 void print_matrix (const LinAlgo::matrix<ItemType>& M);
@@ -110,6 +111,13 @@ int main (void) {
     std::cout << "Inverse of M1:" << std::endl;
     print_matrix<type> (LinAlgo::inverse (m1));
     std::cout << "The determinant of M1 is: " << m1.getDeterminant() << std::endl << std::endl;
+    LinAlgo::matrix<type> detMat({
+                                 {2, 1, 2},
+                                 {1, 1, 1},
+                                 {2, 2, 5}});
+    std::cout << "The determinant of the following matrix should be 3: " << std::endl;
+    print_matrix<type>(detMat);
+    std::cout << "Determinant is: " << detMat.getDeterminant() << std::endl << std::endl;
     std::cout << "Matrix division: \nNumerator:" << std::endl;
     //LinAlgo::matrix<type> numerator({
     //                                {1, 2, 3, 4, 5},
@@ -125,7 +133,23 @@ int main (void) {
     std::cout << "Result: " << std::endl;
     print_matrix(invert2.divide(invert2));
     std::cout << std::endl;
-
+    LinAlgo::matrix<type> m1Sorted(m1);
+    std::sort(m1Sorted.begin(), m1Sorted.end(), [](auto a, auto b) {
+                return a < b;
+              });
+    std::cout << "M1 sorted:" << std::endl;
+    print_matrix<type>(m1Sorted);
+    std::cout << std::endl;
+    //for (auto e : m1) {
+    //    std::cout << e << '\t';
+    //}
+    //for (auto i = m1Sorted.begin(), j = m1Sorted.end(); i < j; i++, j--) {
+    //    auto temp = *i;
+    //    i = *j;
+    //    j = temp;
+    //}
+    //print_matrix<type>(m1Sorted);
+    //std::cout << std::endl;
 
     m1.useGPU (true);
     m2.useGPU (true);
