@@ -27,38 +27,14 @@ using namespace LinAlgo;
 * @param[enable_gpu] Whether the matrix should attempt to use the GPU to make computations. Defaults to false.
 */
 template <class ItemType>
-matrix<ItemType>::matrix (size_t height, size_t width, bool enable_gpu) : m_height (height), m_width (width), m_useGPU (enable_gpu),
+matrix<ItemType>::matrix (const size_t& height, const size_t& width, const ItemType& val, bool enable_gpu) : m_height (height), m_width (width), m_useGPU (enable_gpu),
     m_gpuUpToDate (false), m_gpuData (NULL), m_gpuHeight (NULL),
-    m_gpuWidth (NULL), m_command_queue (NULL), m_gpuSlicesUpToDate (height, false) {
-    m_data.resize (m_height);
-    for (size_t i = 0; i < m_height; i++) {
-        m_data[i] = new std::vector<ItemType> (m_width);
-    }
-    m_upToDate = 0;
-}
-
-//this constructor is very ambiguous and I should fix that
-/**
-* @brief This is the constructor for the matrix class.
-*
-* @details Creates the desired mxn matrix of the template-specified data type.
-*
-* @param[height] The desired height of the matrix
-*
-* @param[width] The desired width of the matrix
-*
-* @param[val] The value to initialize the matrix with
-*
-* @param[enable_gpu] Whether the matrix should attempt to use the GPU to make computations. Defaults to false.
-*/
-template <class ItemType>
-matrix<ItemType>::matrix (size_t height, size_t width, ItemType val, bool enable_gpu) : m_height (height), m_width (width), m_useGPU (enable_gpu),
-    m_gpuUpToDate (false), m_gpuData (NULL), m_gpuHeight (NULL), m_upToDate (0),
     m_gpuWidth (NULL), m_command_queue (NULL), m_gpuSlicesUpToDate (height, false) {
     m_data.resize (m_height);
     for (size_t i = 0; i < m_height; i++) {
         m_data[i] = new std::vector<ItemType> (m_width, val);
     }
+    m_upToDate = 0;
 }
 
 /**

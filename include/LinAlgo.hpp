@@ -75,8 +75,8 @@ namespace LinAlgo {
     template <class ItemType>
     matrix<ItemType> rre (const matrix<ItemType>&); //Reduced Row Echelon form
 
-    //these should have options for using the gpu... probably if ALL_USE_GPU is true
-    //vector operations
+//these should have options for using the gpu... probably if ALL_USE_GPU is true
+//vector operations
     template <class ItemType>
     ItemType operator*(const std::vector<ItemType>& A, const std::vector<ItemType>& B);//define the inner product for vectors
     template <class ItemType>
@@ -90,14 +90,11 @@ namespace LinAlgo {
     template <class ItemType>
     std::vector<ItemType> operator+(const std::vector<ItemType>& A, const std::vector<ItemType>& B);
 
-    //vector functions
+//vector functions
     template <class ItemType, class FuncRet>
     ItemType normalize(const ItemType& val, FuncRet(*innerProduct)(const ItemType&, const ItemType&) = [](const ItemType& A, const ItemType& B) {return A * B;});//default inner product is for real numbers and vectors
     template <class ItemType, class FuncRet>
-    std::vector<ItemType> gs(const std::vector<ItemType>& vals, FuncRet(*innerProduct)(const ItemType&, const ItemType&) = [](const ItemType& A, const ItemType& B) {return A * B;});//gram-schmidt process on a set of (vectors)
-
-
-
+    std::vector<ItemType> gs(const std::vector<ItemType>& vals, FuncRet(*innerProduct)(const ItemType&, const ItemType&) = [](const ItemType& A, const ItemType& B) {return A * B;}, bool normaliz_output = true);//gram-schmidt process on a set of (vectors)
 
 //functions and such for dealing with the gpu
     static cl_int InitGPU();
@@ -471,7 +468,8 @@ bool LinAlgo::qr (const LinAlgo::matrix<ItemType>& M, matrix<ItemType>& Q, matri
     }
 
     matrix<ItemType> M_trans (transpose (M)); //can use for "vertical slices" of M
-    matrix<ItemType> ret(M.m_height, M.m_width);
+    Q = matrix<ItemType>(M.m_height, M.m_width);
+    R = matrix<ItemType>(M.m_height, M.m_width, 0);
     if (false) {//use gpu
 
     } else {
@@ -482,11 +480,15 @@ bool LinAlgo::qr (const LinAlgo::matrix<ItemType>& M, matrix<ItemType>& Q, matri
         data = gs<std::vector<ItemType>, ItemType>( data, [](const std::vector<ItemType>& A, const std::vector<ItemType>& B){return A * B;});
         for (size_t i = 0; i < data.size(); i++) {
             for (size_t j = 0; j < data[i].size(); j++) {
-                ret[j][i] = data[i][j];
+                Q[j][i] = data[i][j];
+            }
+        }
+        for (size_t i = 0; i < R.m_width; i++) {
+            for (size_t j = i; j < R.m_width; j++) {
+                R[i][j] = data[i] * M_trans[j];
             }
         }
     }
-    Q = ret;
     return true;
 }
 
@@ -753,7 +755,7 @@ ItemType LinAlgo::normalize(const ItemType& val, FuncRet(*innerProduct)(const It
 * @note Inner product defaults to operator*() which is defined for reals and vectors containing arithmetic values
 */
 template <class ItemType, class FuncRet>
-std::vector<ItemType> LinAlgo::gs(const std::vector<ItemType>& vals, FuncRet(*innerProduct)(const ItemType&, const ItemType&)) {
+std::vector<ItemType> LinAlgo::gs(const std::vector<ItemType>& vals, FuncRet(*innerProduct)(const ItemType&, const ItemType&), bool normalize_output) {
     std::vector<ItemType> ret(vals.size());
     ret[0] = vals[0];
     for (size_t i = 1; i < ret.size(); i++) {
@@ -765,7 +767,11 @@ std::vector<ItemType> LinAlgo::gs(const std::vector<ItemType>& vals, FuncRet(*in
                 break;
             }
         }
-        ret[i] = normalize(ret[i], innerProduct);
+    }
+    if (normalize_output) {
+        for (size_t i = 0; i < ret.size(); i++) {
+            ret[i] = normalize(ret[i], innerProduct);
+        }
     }
     return ret;
 }

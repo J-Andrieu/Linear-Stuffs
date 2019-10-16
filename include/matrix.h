@@ -29,11 +29,7 @@ template <class ItemType>
 class LinAlgo::matrix {
 public:
     //constructors
-    matrix (size_t height, size_t width, bool enable_gpu = false);
-    //this one is a little ambiguous b/c of the default...
-    //replacing above and below w/ matrix(size_t h, size_t w, ItemType& val = NULL, bool use_gpu = fase)
-    //may be better
-    matrix (size_t height, size_t width, ItemType val, bool enable_gpu = false);
+    matrix (const size_t& height, const size_t& width, const ItemType& val = ItemType(0), bool enable_gpu = false);
     matrix (const std::vector<std::vector<ItemType>>& vals, bool enable_gpu = false);
     template <class ParamType>
     matrix (const matrix<ParamType>& M);
@@ -57,7 +53,7 @@ public:
     size_t getWidth() const;
     bool isSquare() const;
 
-    matrix<ItemType>& resize (size_t height, size_t width, ItemType& val = NULL);
+    matrix<ItemType>& resize (size_t height, size_t width, ItemType& val = ItemType(0));
     matrix<ItemType> subMatrix (size_t y, size_t x, size_t h, size_t w);
     matrix<ItemType>& copy(size_t y, size_t x, matrix<ItemType>);//coordinates are position to copy into in order to copy a smaller matrix into a select part
 

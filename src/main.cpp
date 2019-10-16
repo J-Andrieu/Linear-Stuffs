@@ -155,11 +155,17 @@ int main (void) {
                            {2, 0, 0},
                            {2, 2, 1}});
     qr(orthogMe, Q, R);
-    std::cout << "Matrix before columns are orthonormalized: " << std::endl;
+    std::cout << "Matrix before QR decomposition: " << std::endl;
     print_matrix<type>(orthogMe);
     std::cout << std::endl;
-    std::cout << "After orthonormalization: " << std::endl;
+    std::cout << "Q: " << std::endl;
     print_matrix<type>(Q);
+    std::cout << std::endl;
+    std::cout << "R: " << std::endl;
+    print_matrix<type>(R);
+    std::cout << std::endl;
+    std::cout << "Q*R: " << std::endl;
+    print_matrix<type>(Q * R);
     std::cout << std::endl;
 
     m1.useGPU (true);
