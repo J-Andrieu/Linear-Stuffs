@@ -23,7 +23,7 @@ const int WIDTH = 10;
 typedef double type;
 
 template <class ItemType>
-void print_matrix (const LinAlgo::matrix<ItemType>& M);
+void print_matrix (const LinAlgo::matrix<ItemType>& M, int padding = -8);
 void checkReturn (cl_int ret);
 //template <class ItemType>
 //bool checkAccuracy(LinAlgo::matrix<ItemType>& gpu, LinAlgo::matrix<ItemType>& cpu);
@@ -150,6 +150,17 @@ int main (void) {
     //}
     //print_matrix<type>(m1Sorted);
     //std::cout << std::endl;
+    matrix<type> Q(0, 0), R(0, 0);
+    matrix<type> orthogMe({{1,-1, 0},
+                           {2, 0, 0},
+                           {2, 2, 1}});
+    qr(orthogMe, Q, R);
+    std::cout << "Matrix before columns are orthonormalized: " << std::endl;
+    print_matrix<type>(orthogMe);
+    std::cout << std::endl;
+    std::cout << "After orthonormalization: " << std::endl;
+    print_matrix<type>(Q);
+    std::cout << std::endl;
 
     m1.useGPU (true);
     m2.useGPU (true);
@@ -184,7 +195,7 @@ int main (void) {
     LinAlgo::matrix<type> m6 = m1.multiply (m2);
     long long int t4 = t.getMicrosecondsElapsed();
     t.start();
-    LinAlgo::matrix<type> m8 = m1.subtract (m2);
+    LinAlgo::matrix<type> m8 = m1 - m2;
     long long int t6 = t.getMicrosecondsElapsed();
 
     std::cout << "Using the CPU:" << std::endl;
@@ -239,38 +250,41 @@ int main (void) {
 }
 
 template <class ItemType>
-void print_matrix (const LinAlgo::matrix<ItemType>& M) {
+void print_matrix (const LinAlgo::matrix<ItemType>& M, int padding) {
     if (M.getWidth() == 0) {
         std::cout << "Null matrix" << std::endl;
     }
     if (M.getWidth() < 20) {
+        std::string fstring = std::string("% ") + std::to_string(padding) + std::string("s");
         for (int i = 0; i < M.getHeight(); i++) {
             for (int j = 0; j < M.getWidth(); j++) {
-                //that size check is cuz floating point error is annoying to look at
-                //also -9.25596e+61 still gets printed... really dumb number
-                std::cout << (std::abs (M[i][j]) > 0.000001f ? M[i][j] : 0) << '\t';
+                float temp = M[i][j];
+                std::string valStr;
+                if (std::abs(temp) < 0.0009) {
+                    valStr = std::string(" ") + std::to_string(0);
+                } else {
+                    std::string sign = temp < 0.0 ? "-" : " ";
+                    double val = std::abs(temp * 1000);
+                    int rounded = (int)(val + .5);
+                    int modulo = rounded % 1000;
+                    std::string moduloStr = std::to_string(modulo);
+                    for (auto k = moduloStr.end() - 1; k >= moduloStr.begin(); k--) {
+                        if (*k != '0') {
+                            break;
+                        } else {
+                            *k = ' ';
+                        }
+                    }
+                    rounded /= 1000;
+                    valStr = sign + std::to_string(rounded) + (modulo == 0 ? "" : std::string(".") + moduloStr);
+                }
+
+                printf(fstring.c_str(), valStr.c_str());
             }
             std::cout << std::endl;
         }
     }
 }
-
-/*
-template <class ItemType>
-bool checkAccuracy(LinAlgo::matrix<ItemType>& gpu, LinAlgo::matrix<ItemType>& cpu) {
-    if (gpu.getHeight() != cpu.getHeight() || gpu.getWidth() != gpu.getWidth()) {
-        return false;
-    }
-    for (size_t i = 0; i < gpu.getHeight(); i++) {
-        for (size_t j = 0; j < gpu.getWidth(); j++) {
-            if (gpu[i][j] != cpu[i][j]) {
-                return false;
-            }
-        }
-    }
-    return true;
-}
-*/
 
 const char* getErrorString (cl_int error) {
     switch (error) {

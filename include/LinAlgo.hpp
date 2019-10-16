@@ -13,8 +13,9 @@
 #include <cstdlib>
 #include <string>
 #include <type_traits>
+#include <cassert>
 
-#define CL_USE_DEPRECATED_OPENCL_1_2_APIS
+#define CL_USE_DEPRECATED_OPENCL_1_2_APIS //just in case somone has OpenCL 1.2
 #ifdef _WIN32
 #include <CL\cl.h>
 #else
@@ -33,7 +34,7 @@
 * functions overwrites the calling object, while the LinAlgo versions does not.
 */
 namespace LinAlgo {
-//the all importan matrix class
+//the all important matrix class
     template <class ItemType>
     class matrix;
 
@@ -73,6 +74,29 @@ namespace LinAlgo {
     matrix<ItemType> re (const matrix<ItemType>& M, int& row_swaps);
     template <class ItemType>
     matrix<ItemType> rre (const matrix<ItemType>&); //Reduced Row Echelon form
+
+    //these should have options for using the gpu... probably if ALL_USE_GPU is true
+    //vector operations
+    template <class ItemType>
+    ItemType operator*(const std::vector<ItemType>& A, const std::vector<ItemType>& B);//define the inner product for vectors
+    template <class ItemType>
+    std::vector<ItemType> operator*(const std::vector<ItemType>& A, const ItemType& B);
+    template <class ItemType>
+    std::vector<ItemType> operator*(const ItemType& A, const std::vector<ItemType>& B);
+    template <class ItemType>
+    std::vector<ItemType> operator/(const std::vector<ItemType>& A, const ItemType& B);
+    template <class ItemType>
+    std::vector<ItemType> operator-(const std::vector<ItemType>& A, const std::vector<ItemType>& B);
+    template <class ItemType>
+    std::vector<ItemType> operator+(const std::vector<ItemType>& A, const std::vector<ItemType>& B);
+
+    //vector functions
+    template <class ItemType, class FuncRet>
+    ItemType normalize(const ItemType& val, FuncRet(*innerProduct)(const ItemType&, const ItemType&) = [](const ItemType& A, const ItemType& B) {return A * B;});//default inner product is for real numbers and vectors
+    template <class ItemType, class FuncRet>
+    std::vector<ItemType> gs(const std::vector<ItemType>& vals, FuncRet(*innerProduct)(const ItemType&, const ItemType&) = [](const ItemType& A, const ItemType& B) {return A * B;});//gram-schmidt process on a set of (vectors)
+
+
 
 
 //functions and such for dealing with the gpu
@@ -117,17 +141,15 @@ namespace LinAlgo {
 
         float getPlatformVersion (cl_platform_id platform_id) {
             //evaluate opencl version
-#define VERSION_LENGTH 64
+            size_t VERSION_LENGTH = 64;
             char complete_version[VERSION_LENGTH];
             size_t realSize = 0;
             clGetPlatformInfo (platform_id, CL_PLATFORM_VERSION, VERSION_LENGTH,
                                &complete_version, &realSize);
             char version[4];
             version[3] = 0;
-            //printf("%s\n", complete_version);
             std::copy (complete_version + 7, complete_version + 11, version);
             return atof (version);
-            //printf("V %s %f\n", version, OPENCL_VERSION);
         }
 
         int choosePlatform (cl_platform_id* platform_id, size_t numPlatforms, float preferredOCLVersion) {
@@ -216,7 +238,7 @@ static cl_int LinAlgo::InitGPU() {
     }
     int platform_index = choosePlatform (m_platform_id, ret_num_platforms, 2.2);
     OPENCL_VERSION = getPlatformVersion (m_platform_id[platform_index]);
-    printf ("The chosen platform version is %f\n", OPENCL_VERSION);
+    //printf ("The chosen platform version is %f\n", OPENCL_VERSION);
     if (OPENCL_VERSION < 2.0) {
         printf ("Warning: Opencl 1.x functions are not required to be implemented,\nFunctions such as clCreateQueue() which only changed names between versions may cause issues.\n");
     }
@@ -227,11 +249,11 @@ static cl_int LinAlgo::InitGPU() {
             printf ("Warning: No OpenCL device available\n");
             return ret;
         } else {
-            printf ("CPU device chosen\n");
+            //printf ("CPU device chosen\n");
             ret = clGetDeviceIDs (m_platform_id[platform_index], CL_DEVICE_TYPE_CPU, 1, &m_device_id, &ret_num_devices);
         }
     } else {
-        printf ("GPU device chosen\n");
+        //printf ("GPU device chosen\n");
         ret = clGetDeviceIDs (m_platform_id[platform_index], CL_DEVICE_TYPE_GPU, 1, &m_device_id, &ret_num_devices);
     }
 
@@ -247,6 +269,9 @@ static cl_int LinAlgo::InitGPU() {
         return ret;
     }
 
+    /*
+    Once kernels are completed the template will be stored as part of the source code to remove the need to track files
+    */
     //create kernels
     //first get the programs set up
     #ifdef MATRIX_KERNEL_DIR
@@ -418,7 +443,7 @@ LinAlgo::matrix<ItemType> LinAlgo::inverse (matrix<ItemType>& M) { //would be co
         return ret / det;
     } else {
         if (M.getDeterminant() == 0) {
-            printf ("The determinant was 0\n");
+            //printf ("The determinant was 0\n");
             return matrix<ItemType> (0, 0);
         }
         matrix<ItemType> augmented (M.m_height, M.m_width * 2, 0, M.m_useGPU);
@@ -437,6 +462,7 @@ LinAlgo::matrix<ItemType> LinAlgo::inverse (matrix<ItemType>& M) { //would be co
 * @brief QR decomposition
 *
 * @detail V1 uses the Graham-Schmidt method for QR factorization
+*
 */
 template <class ItemType>
 bool LinAlgo::qr (const LinAlgo::matrix<ItemType>& M, matrix<ItemType>& Q, matrix<ItemType>& R) {
@@ -445,12 +471,22 @@ bool LinAlgo::qr (const LinAlgo::matrix<ItemType>& M, matrix<ItemType>& Q, matri
     }
 
     matrix<ItemType> M_trans (transpose (M)); //can use for "vertical slices" of M
+    matrix<ItemType> ret(M.m_height, M.m_width);
     if (false) {//use gpu
 
     } else {
-
+        std::vector<std::vector<ItemType>> data(M_trans.m_height);
+        for (size_t i = 0; i < M_trans.m_height; i++) {
+            data[i] = *M_trans.m_data[i];
+        }
+        data = gs<std::vector<ItemType>, ItemType>( data, [](const std::vector<ItemType>& A, const std::vector<ItemType>& B){return A * B;});
+        for (size_t i = 0; i < data.size(); i++) {
+            for (size_t j = 0; j < data[i].size(); j++) {
+                ret[j][i] = data[i][j];
+            }
+        }
     }
-
+    Q = ret;
     return true;
 }
 
@@ -623,6 +659,120 @@ LinAlgo::matrix<ItemType> LinAlgo::gj (const LinAlgo::matrix<ItemType>& M) {
 
     return result;
 }
+
+#pragma region Vector Functions
+// <editor-fold desc="Vector Functions">
+
+/**
+* @brief Vector inner product
+*/
+template <class ItemType>
+ItemType LinAlgo::operator*(const std::vector<ItemType>& A, const std::vector<ItemType>& B) {
+    ItemType sum = 0;
+    for (size_t i = 0; i < A.size() && i < B.size(); i++) {
+        sum += A[i] * B[i];
+    }
+    return sum;
+}
+
+/**
+* @brief Vector scalar multiplication
+*/
+template <class ItemType>
+std::vector<ItemType> LinAlgo::operator*(const std::vector<ItemType>& A, const ItemType& B) {
+    std::vector<ItemType> ret(A.size());
+    for (size_t i = 0; i < ret.size(); i++) {
+        ret[i] = A[i] * B;
+    }
+    return ret;
+}
+
+/**
+* @brief Vector scalar multiplication
+*/
+template <class ItemType>
+std::vector<ItemType> LinAlgo::operator*(const ItemType& A, const std::vector<ItemType>& B) {
+    std::vector<ItemType> ret(B.size());
+    for (size_t i = 0; i < ret.size(); i++) {
+        ret[i] = B[i] * A;
+    }
+    return ret;
+}
+
+/**
+* @brief Vector scalar division
+*/
+template <class ItemType>
+std::vector<ItemType> LinAlgo::operator/(const std::vector<ItemType>& A, const ItemType& B) {
+    std::vector<ItemType> ret(A.size());
+    for (size_t i = 0; i < ret.size(); i++) {
+        ret[i] = A[i] / B;
+    }
+    return ret;
+}
+
+/**
+* @brief Vector addition
+*/
+template <class ItemType>
+std::vector<ItemType> LinAlgo::operator+(const std::vector<ItemType>& A, const std::vector<ItemType>& B) {
+    std::vector<ItemType> ret(A.size());
+    for (size_t i = 0; i < A.size() && i < B.size(); i++) {
+        ret[i] = A[i] + B[i];
+    }
+    return ret;
+}
+
+/**
+* @brief Vector subtraction
+*/
+template <class ItemType>
+std::vector<ItemType> LinAlgo::operator-(const std::vector<ItemType>& A, const std::vector<ItemType>& B) {
+    std::vector<ItemType> ret(A.size());
+    for (size_t i = 0; i < A.size() && i < B.size(); i++) {
+        ret[i] = A[i] - B[i];
+    }
+    return ret;
+}
+
+/**
+* @brief Normalizes a vector
+*
+* @note Innder product defaults to operator*() which is defined for reals and vectors containing arithmetic values
+*/
+template <class ItemType, class FuncRet>
+ItemType LinAlgo::normalize(const ItemType& val, FuncRet(*innerProduct)(const ItemType&, const ItemType&)) {
+    FuncRet norm = innerProduct(val, val);
+    norm = std::sqrt(norm);
+    return val / norm;
+}
+
+/**
+* @brief Performs the Gram-Schmidt procedure to orthonormalize a set of vectors
+*
+* @note Inner product defaults to operator*() which is defined for reals and vectors containing arithmetic values
+*/
+template <class ItemType, class FuncRet>
+std::vector<ItemType> LinAlgo::gs(const std::vector<ItemType>& vals, FuncRet(*innerProduct)(const ItemType&, const ItemType&)) {
+    std::vector<ItemType> ret(vals.size());
+    ret[0] = vals[0];
+    for (size_t i = 1; i < ret.size(); i++) {
+        ret[i] = vals[i];
+        for (size_t j = i - 1; ; j--) {
+            FuncRet tempScalar = innerProduct(vals[i], ret[j]) / innerProduct(ret[j], ret[j]);
+            ret[i] = ret[i] - (tempScalar * ret[j]);
+            if (j == 0) {
+                break;
+            }
+        }
+        ret[i] = normalize(ret[i], innerProduct);
+    }
+    return ret;
+}
+
+
+// </editor-fold>
+#pragma endregion
 
 // </editor-fold>
 #pragma endregion

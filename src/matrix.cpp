@@ -356,6 +356,25 @@ ItemType matrix<ItemType>::getDeterminant() {
 }
 
 /**
+* @brief Returns the trace of a square matrix
+*
+* @detail Will calculate the determinant if it hasn't been done already
+*/
+template <class ItemType>
+ItemType matrix<ItemType>::trace() {
+    //should trace be stored? it's easy enough to track, but it's also fast anyways
+    if (m_height != m_width) {
+        return 0;//no trace
+    } else {
+        int t = 0;
+        for (int i = 0; i < m_height; i++) {
+            t += (*m_data[i])[i];
+        }
+        return t;
+    }
+}
+
+/**
 * @brief Resizes the calling matrix
 *
 * @detail This resizes the matrix to the given height and width.
@@ -435,21 +454,33 @@ matrix<ItemType> matrix<ItemType>::identity (size_t height, size_t width) {
     return id;
 }
 
+/**
+* @brief Returns a const interator at the frst element of the matrix
+*/
 template <class ItemType>
 matrix<ItemType>::iterator<const ItemType> matrix<ItemType>::cbegin() {
     return iterator<const ItemType>(0, 0, m_width * m_height - 1, m_width, &m_data);
 }
 
+/**
+* @brief Returns a const interator at the last element of the matrix
+*/
 template <class ItemType>
 matrix<ItemType>::iterator<const ItemType> matrix<ItemType>::cend() {
     return iterator<const ItemType>(m_width * m_height - 1, 0, m_width * m_height - 1, m_width, &m_data);
 }
 
+/**
+* @brief Returns an interator at the frst element of the matrix
+*/
 template <class ItemType>
 matrix<ItemType>::iterator<ItemType> matrix<ItemType>::begin() {
     return iterator<ItemType>(0, 0, m_width * m_height - 1, m_width, &m_data);
 }
 
+/**
+* @brief Returns an interator at the last element of the matrix
+*/
 template <class ItemType>
 matrix<ItemType>::iterator<ItemType> matrix<ItemType>::end() {
     return iterator<ItemType>(m_width * m_height - 1, 0, m_width * m_height - 1, m_width, &m_data);
@@ -1140,48 +1171,23 @@ matrix<ItemType>& matrix<ItemType>::operator= (const matrix<ArgType>& M) {
         m_height = M.m_height;
     }
     if (m_width != M.m_width) {
-        for (size_t i = 0; i < m_height; i++) {
-            (*m_data[i]).resize (M.m_width);
+        if (m_width == 0) {
+            for (size_t i = 0; i < m_height; i++) {
+                m_data[i] = new std::vector<ItemType>(M.m_width);
+            }
+        } else {
+            for (size_t i = 0; i < m_height; i++) {
+                (*m_data[i]).resize (M.m_width);
+            }
         }
         m_width = M.m_width;
     }
-    if (std::is_same<ItemType, ArgType>::value) {
-        if (GPU_INITIALIZED && (M.useGPU || ALL_USE_GPU) && M.gpuUpToData) {
-            while (m_command_queue != NULL);
-            initQueue();
-            if (m_gpuData) {
-                clReleaseMemObject (m_gpuData);
-            }
-            if (m_gpuHeight) {
-                clReleaseMemObject (m_gpuHeight);
-            }
-            if (m_gpuWidth) {
-                clReleaseMemObject (m_gpuWidth);
-            }
-            m_gpuData = M.m_gpuData;
-            m_gpuHeight = M.m_gpuHeight;
-            m_gpuWidth = M.m_gpuWidth;
-            pullFromGPU (m_command_queue);
-            clFinish (m_command_queue);
-            clReleaseCommandQueue (m_command_queue);
-            m_command_queue = NULL;
-            m_gpuData = NULL;
-            m_gpuHeight = NULL;
-            m_gpuWidth = NULL;
-        } else {
-            for (size_t i = 0; i < m_height; i++) {
-                for (size_t j = 0; j < m_width; j++) {
-                    (*m_data[i])[j] = (*M.m_data[i])[j];
-                }
-            }
-        }
-    } else {
-        for (size_t i = 0; i < m_height; i++) {
-            for (size_t j = 0; j < m_width; j++) {
-                (*m_data[i])[j] = ItemType ((*M.m_data[i])[j]);
-            }
+    for (size_t i = 0; i < m_height; i++) {
+        for (size_t j = 0; j < m_width; j++) {
+            (*m_data[i])[j] = ItemType ((*M.m_data[i])[j]);
         }
     }
+
     m_gpuUpToDate = false;
     m_gpuSlicesUpToDate.resize (m_height, false);
     m_upToDate = 0;//if eigenvalues and stuff get copied over, this will be different
@@ -1201,6 +1207,78 @@ matrix<ItemType>& matrix<ItemType>::operator= (const matrix<ArgType>& M) {
     if (m_gpuWidth) {
         clReleaseMemObject (m_gpuWidth);
         m_gpuWidth = NULL;
+    }
+
+    //clear everything else that's now irrelevent (or copy things that are over lol)
+    return *this;
+}
+
+/**
+* @brief Assignment operator whoot
+*
+* @param[M] The matrix to be copied.
+*
+* @return A reference to the lhs matrix.
+*/
+template <class ItemType>
+matrix<ItemType>& matrix<ItemType>::operator= (const matrix<ItemType>& M) {
+    if (m_height != M.m_height) {
+        m_data.resize (M.m_height);
+        m_height = M.m_height;
+    }
+    if (m_width != M.m_width) {
+        if (m_width == 0) {
+            for (size_t i = 0; i < m_height; i++) {
+                m_data[i] = new std::vector<ItemType>(M.m_width);
+            }
+        } else {
+            for (size_t i = 0; i < m_height; i++) {
+                (*m_data[i]).resize (M.m_width);
+            }
+        }
+        m_width = M.m_width;
+    }
+    if (GPU_INITIALIZED && (M.m_useGPU || ALL_USE_GPU) && (M.m_upToDate & dataFlag::GPU_DATA)) {
+        while (m_command_queue != NULL);
+        initQueue();
+        if (m_gpuData) {
+            clReleaseMemObject (m_gpuData);
+        }
+        if (m_gpuHeight) {
+            clReleaseMemObject (m_gpuHeight);
+        }
+        if (m_gpuWidth) {
+            clReleaseMemObject (m_gpuWidth);
+        }
+        m_gpuData = M.m_gpuData;
+        m_gpuHeight = M.m_gpuHeight;
+        m_gpuWidth = M.m_gpuWidth;
+        pullFromGPU (m_command_queue);
+        clFinish (m_command_queue);
+        clReleaseCommandQueue (m_command_queue);
+        m_command_queue = NULL;
+        m_gpuData = NULL;
+        m_gpuHeight = NULL;
+        m_gpuWidth = NULL;
+    } else {
+        for (size_t i = 0; i < m_height; i++) {
+            for (size_t j = 0; j < m_width; j++) {
+                (*m_data[i])[j] = (*M.m_data[i])[j];
+            }
+        }
+    }
+
+    m_gpuUpToDate = false;
+    m_gpuSlicesUpToDate.resize (m_height, false);
+    m_upToDate = 0;//if eigenvalues and stuff get copied over, this will be different
+    m_useGPU = M.m_useGPU;
+    if (m_command_queue) {
+        clFinish (m_command_queue);
+        m_command_queue = NULL;
+    }
+    if (m_gpuData) {
+        clReleaseMemObject (m_gpuData);
+        m_gpuData = NULL;
     }
 
     //clear everything else that's now irrelevent (or copy things that are over lol)

@@ -68,6 +68,7 @@ public:
 
     //Idk if these should count as getters and setters or not
     ItemType getDeterminant();
+    ItemType trace();
 
     std::vector<ItemType> getEigenValues();
     std::vector<ItemType> getEigenVector (ItemType);
@@ -124,6 +125,7 @@ public:
     std::vector<ItemType>& operator[] (size_t y) const;
     template <class ArgType>
     matrix<ItemType>& operator= (const matrix<ArgType>& M);
+    matrix<ItemType>& operator= (const matrix<ItemType>& M);
     matrix<ItemType>& operator= (matrix<ItemType>&& M);
 
     template <class ArgType>
