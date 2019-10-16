@@ -18,8 +18,8 @@
 #include "../include/Timer.h"
 
 //less than 25x25 causes bsod with the destructor uncommented for some reason
-const int HEIGHT = 10;
-const int WIDTH = 10;
+int HEIGHT = 15;
+int WIDTH = 15;
 typedef double type;
 
 template <class ItemType>
@@ -33,7 +33,22 @@ std::tuple<size_t, size_t> getDimensions (matrix<type> &M) {
 }
 
 /*MATRIX TESTING*/
-int main (void) {
+int main (int argc, char* argv[]) {
+
+    if (argc > 1) {
+        try {
+            HEIGHT = std::stoi (argv[1]);
+            if (argc > 2) {
+                WIDTH = std::stoi (argv[2]);
+            } else {
+                WIDTH = HEIGHT;
+            }
+        } catch (...) {
+            std::cout << "accepted usage: matrix_test <height <width>>" << std::endl;
+            return -1;
+        }
+    }
+
     checkReturn (LinAlgo::InitGPU());
 
     std::cout << (LinAlgo::IsGPUInitialized() ? "The GPU is initialized" : "The GPU is not initialized") << std::endl;
@@ -260,7 +275,7 @@ void print_matrix (const LinAlgo::matrix<ItemType>& M, int padding) {
     if (M.getWidth() == 0) {
         std::cout << "Null matrix" << std::endl;
     }
-    if (M.getWidth() < 20) {
+    if (M.getWidth() <= 20) {
         std::string fstring = std::string("% ") + std::to_string(padding) + std::string("s");
         for (int i = 0; i < M.getHeight(); i++) {
             for (int j = 0; j < M.getWidth(); j++) {
