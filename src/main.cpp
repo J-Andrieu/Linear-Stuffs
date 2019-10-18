@@ -13,6 +13,7 @@
 #include <sstream>
 #include <tuple>
 #include <algorithm>
+#include <climits>
 
 #include "../include/LinAlgo.hpp"
 #include "../include/Timer.h"
@@ -20,13 +21,13 @@
 //less than 25x25 causes bsod with the destructor uncommented for some reason
 int HEIGHT = 15;
 int WIDTH = 15;
-typedef double type;
+typedef float type;
 
 template <class ItemType>
-void print_matrix (const LinAlgo::matrix<ItemType>& M, int padding = -8);
+void print_matrix (const LinAlgo::matrix<ItemType>& M, int padding = -10);
 void checkReturn (cl_int ret);
-//template <class ItemType>
-//bool checkAccuracy(LinAlgo::matrix<ItemType>& gpu, LinAlgo::matrix<ItemType>& cpu);
+template <class ItemType>
+std::tuple<size_t, size_t, ItemType, ItemType> locateError(const LinAlgo::matrix<ItemType>& M1, const LinAlgo::matrix<ItemType>& M2);
 
 std::tuple<size_t, size_t> getDimensions (matrix<type> &M) {
     return {M.getHeight(), M.getWidth()};
@@ -63,8 +64,9 @@ int main (int argc, char* argv[]) {
 
     for (size_t i = 0; i < HEIGHT; i++) {
         for (size_t j = 0; j < WIDTH; j++) {
-            m1.set (i, j, (type) (i + j));
-            m2.set (j, i, (type) (i * j));
+            type val1 = (std::pow((type) i, j) - j) / WIDTH;
+            m1.set (i, j, (type) val1 < SHRT_MAX ? (val1 > UCHAR_MAX ? val1 / UCHAR_MAX : val1) : (int) val1 % UCHAR_MAX);
+            m2.set (j, i, (type) i + j);
         }
     }
     std::cout << "A small identity:" << std::endl;
@@ -86,8 +88,15 @@ int main (int argc, char* argv[]) {
     std::cout << "Reduced Row Echelon M1:" << std::endl;
     print_matrix<type> (LinAlgo::rre (m1));
     std::cout << std::endl;
-    std::cout << "Gauss-Jordan Elimination M1:" << std::endl;
-    print_matrix<type> (LinAlgo::gj (m1));
+    matrix<type> m1gj(HEIGHT, WIDTH + 1);
+    m1gj.copy(0, 0, m1);
+    for (size_t i = 0; i < HEIGHT; i++) {
+        m1gj[i][WIDTH] = i + 1;
+    }
+    std::cout << "Gauss-Jordan Elimination on M1 with solution vector (1, ..., " << HEIGHT << "):\nBefore:" << std::endl;
+    print_matrix<type> (m1gj);
+    std::cout << "After:" << std::endl;
+    print_matrix<type> (LinAlgo::gj (m1gj));
     std::cout << std::endl;
     std::cout << "Gauss-Jordan Elimination on test linear system:" << std::endl;
     LinAlgo::matrix<type> linsys ({
@@ -182,6 +191,19 @@ int main (int argc, char* argv[]) {
     std::cout << "Q*R: " << std::endl;
     print_matrix<type>(Q * R);
     std::cout << std::endl;
+    qr(m1, Q, R);
+    std::cout << "Matrix before QR decomposition: " << std::endl;
+    print_matrix<type>(m1);
+    std::cout << std::endl;
+    std::cout << "Q: " << std::endl;
+    print_matrix<type>(Q);
+    std::cout << std::endl;
+    std::cout << "R: " << std::endl;
+    print_matrix<type>(R);
+    std::cout << std::endl;
+    std::cout << "Q*R: " << std::endl;
+    print_matrix<type>(Q * R);
+    std::cout << std::endl;
 
     m1.useGPU (true);
     m2.useGPU (true);
@@ -239,33 +261,45 @@ int main (int argc, char* argv[]) {
     std::cout << "Microseconds for multiplication with CPU: " << t4 << std::endl;
     std::cout << std::endl;
 
-    std::cout << "The addition kernel is " << (m5 == m3 ? "accurate" : "not accurate") << std::endl;
-    std::cout << "The subtraction kernel is " << (m7 == m8 ? "accurate" : "not accurate") << std::endl;
-    std::cout << "The multiplication kernel is " << (m6 == m4 ? "accurate" : "not accurate") << std::endl;
-
-
-//  if (HEIGHT < 15) {
-//      std::cout << "Now to chain multiply all those matrices together just for the fun of it and see what pops out..." << std::endl;
-//
-//      AllUseGPU(true);
-//
-//      t.start();
-//      matrix<int> finalmat = m1.multiply(m2).multiply(m3).multiply(m4).multiply(m5).multiply(m6);
-//      long long int t5 = t.getMicrosecondsElapsed();
-//      std::cout << "Well, that took " << t5 << " microseconds..." << std::endl;
-//      std::cout << "Anyways, this is what the result is:" << std::endl;
-//      print_matrix<int>(finalmat);
-//  }
-
-
-//  print_matrix<int>((matrix<int> &) m1.multiply((matrix<int>&) m1.transpose()));
-//  std::cout << std::endl;
-//  print_matrix<int>((matrix<int> &) m1.transpose().multiply(m1));
+    bool accuracy = true;
+    bool overall_accuracy = true;
+    size_t locX, locY;
+    type V1, V2;
+    accuracy = m5 == m3;
+    std::cout << "The addition kernel is " << (accuracy ? "accurate" : "not accurate") << std::endl;
+    if (!accuracy) {
+        overall_accuracy = false;
+        std::tie(locY, locX, V1, V2) = locateError<type>(m5, m3);
+        std::cout << "\tThe offending location is: " << locY << ", " << locX << std::endl;
+        std::cout << "\tThe CPU provided: " << V1 << std::endl;
+        std::cout << "\tThe GPU provided: " << V2 << std::endl;
+    }
+    accuracy = m7 == m8;
+    std::cout << "The subtraction kernel is " << (accuracy ? "accurate" : "not accurate") << std::endl;
+    if (!accuracy) {
+        overall_accuracy = false;
+        std::tie(locY, locX, V1, V2) = locateError<type>(m5, m3);
+        std::cout << "\tThe offending location is: " << locY << ", " << locX << std::endl;
+        std::cout << "\tThe CPU provided: " << V1 << std::endl;
+        std::cout << "\tThe GPU provided: " << V2 << std::endl;
+    }
+    accuracy = m6 == m4;
+    std::cout << "The multiplication kernel is " << (accuracy ? "accurate" : "not accurate") << std::endl;
+    if (!accuracy) {
+        overall_accuracy = false;
+        std::tie(locY, locX, V1, V2) = locateError<type>(m5, m3);
+        std::cout << "\tThe offending location is: " << locY << ", " << locX << std::endl;
+        std::cout << "\tThe CPU provided: " << V1 << std::endl;
+        std::cout << "\tThe GPU provided: " << V2 << std::endl;
+    }
+    if (!overall_accuracy) {
+        std::cout << std::endl;
+        std::cout << "Note: Since the comparison is between CPU and GPU computation, floating point error may occur." << std::endl;
+        std::cout << "If the offending values are reasonably close then the kernel is most likely still accurate." << std::endl;
+        std::cout << "Also, Location (0, 0) with values 0, and 0 mean that the error could not be located a second time." << std::endl;
+    }
 
     LinAlgo::BreakDownGPU();
-
-//  int x;
-//  std::cin >> x;
 
     return 0;
 }
@@ -279,15 +313,15 @@ void print_matrix (const LinAlgo::matrix<ItemType>& M, int padding) {
         std::string fstring = std::string("% ") + std::to_string(padding) + std::string("s");
         for (int i = 0; i < M.getHeight(); i++) {
             for (int j = 0; j < M.getWidth(); j++) {
-                float temp = M[i][j];
+                ItemType temp = M[i][j];
                 std::string valStr;
                 if (std::abs(temp) < 0.0009) {
                     valStr = std::string(" ") + std::to_string(0);
                 } else {
                     std::string sign = temp < 0.0 ? "-" : " ";
-                    double val = std::abs(temp * 1000);
-                    int rounded = (int)(val + .5);
-                    int modulo = rounded % 1000;
+                    ItemType val = std::abs(temp * 1000);
+                    long int rounded = (int)(val + .5);
+                    long int modulo = rounded % 1000;
                     std::string moduloStr = std::to_string(modulo);
                     for (auto k = moduloStr.end() - 1; k >= moduloStr.begin(); k--) {
                         if (*k != '0') {
@@ -452,4 +486,16 @@ const char* getErrorString (cl_int error) {
 void checkReturn (cl_int ret) {
     if (ret != CL_SUCCESS)
     { std::cerr << getErrorString (ret) << std::endl; }
+}
+
+template <class ItemType>
+std::tuple<size_t, size_t, ItemType, ItemType> locateError(const LinAlgo::matrix<ItemType>& M1, const LinAlgo::matrix<ItemType>& M2) {
+    for (size_t i = 0; i < M1.getHeight(); i++) {
+        for (size_t j = 0; j < M1.getWidth(); j++) {
+            if (M1[i][j] != M2[i][j]) {
+                return {i, j, M1[i][j], M2[i][j]};
+            }
+        }
+    }
+    return {0, 0, 0, 0};
 }

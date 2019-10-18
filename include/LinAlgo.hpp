@@ -224,11 +224,11 @@ static cl_int LinAlgo::InitGPU() {
     { return CL_SUCCESS; }
 
     //get platform and device information
-    cl_uint ret_num_devices;
-    cl_uint ret_num_platforms;
-    cl_int ret = clGetPlatformIDs (0, m_platform_id, &ret_num_platforms);
+    cl_uint ret_num_devices = 0;
+    cl_uint ret_num_platforms = 0;
+    cl_int ret = clGetPlatformIDs (0, NULL, &ret_num_platforms);
     m_platform_id = new cl_platform_id[ret_num_platforms];
-    ret = clGetPlatformIDs (ret_num_devices, m_platform_id, &ret_num_platforms);
+    ret = clGetPlatformIDs (ret_num_platforms, m_platform_id, &ret_num_platforms);
     if (ret != CL_SUCCESS) {
         printf ("Could not get platform IDs.\n");
         return ret;
@@ -236,12 +236,12 @@ static cl_int LinAlgo::InitGPU() {
     int platform_index = choosePlatform (m_platform_id, ret_num_platforms, 2.2);
     OPENCL_VERSION = getPlatformVersion (m_platform_id[platform_index]);
     //printf ("The chosen platform version is %f\n", OPENCL_VERSION);
-    if (OPENCL_VERSION < 2.0) {
-        printf ("Warning: Opencl 1.x functions are not required to be implemented,\nFunctions such as clCreateQueue() which only changed names between versions may cause issues.\n");
-    }
-    ret = clGetDeviceIDs (m_platform_id[platform_index], CL_DEVICE_TYPE_GPU, 0, &m_device_id, &ret_num_devices);
+    //if (OPENCL_VERSION < 2.0) {
+    //    printf ("Warning: Opencl 1.x functions are not required to be implemented,\nFunctions such as clCreateQueue() which only changed names between versions may cause issues.\n");
+    //}
+    ret = clGetDeviceIDs (m_platform_id[platform_index], CL_DEVICE_TYPE_GPU, 0, NULL, &ret_num_devices);
     if (ret_num_devices == 0) {
-        ret = clGetDeviceIDs (m_platform_id[platform_index], CL_DEVICE_TYPE_CPU, 0, &m_device_id, &ret_num_devices);
+        ret = clGetDeviceIDs (m_platform_id[platform_index], CL_DEVICE_TYPE_CPU, 0, NULL, &ret_num_devices);
         if (ret_num_devices == 0) {
             printf ("Warning: No OpenCL device available\n");
             return ret;

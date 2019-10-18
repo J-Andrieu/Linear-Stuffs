@@ -389,6 +389,31 @@ matrix<ItemType>& matrix<ItemType>::resize (size_t height, size_t width, ItemTyp
 }
 
 /**
+* @brief Copies provided matrix into the calling matrix starting at the specified index
+*
+* @param[y] The starting height
+*
+* @param[x] The starting width
+*
+* @param[M] The matrix to copy
+*/
+template <class ItemType>
+matrix<ItemType>& matrix<ItemType>::copy (size_t y, size_t x, matrix<ItemType> M) {
+    for (size_t i = 0; i < M.m_height && ((i + y) < m_height); i++) {
+        for (size_t j = 0; j < M.m_width && ((j + x) < m_width); j++) {
+            (*m_data[i+y])[j+x] = (*M.m_data[i])[j];
+        }
+    }
+    clReleaseMemObject (m_gpuData);
+    m_gpuData = NULL;
+    m_upToDate &= !dataFlag::GPU_DATA;
+    m_gpuSlicesUpToDate.clear();
+    m_gpuSlicesUpToDate.resize (m_height, false);
+    m_gpuUpToDate = false;
+    return *this;
+}
+
+/**
 * @brief Creates a new matrix from a subregion of the calling matrix
 *
 * @param[y] The row to start the slice
