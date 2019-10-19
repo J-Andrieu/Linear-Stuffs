@@ -252,6 +252,17 @@ int main (int argc, char* argv[]) {
     print_matrix<type> (m6);
     std::cout << std::endl;
 
+    m1 = m1.subMatrix(0, 0, m1.getHeight() < m1.getWidth() ? m1.getHeight() : m1.getWidth(), m1.getHeight() < m1.getWidth() ? m1.getHeight() : m1.getWidth());
+    m1.leaveDataOnGPU(true);
+    m1.useGPU(true);
+    LinAlgo::matrix<type> id = LinAlgo::matrix<type>::identity(m1.getHeight());
+    id.leaveDataOnGPU(true);
+    id.useGPU(true);
+    t.start();
+    id = id * id * id * id * m1;
+    long long int t7 = t.getMicrosecondsElapsed();
+    id.pullData();
+
     std::cout << "Microseconds for addition with GPU: " << t1 << std::endl;
     std::cout << "Microseconds for subtraction with GPU: " << t5 << std::endl;
     std::cout << "Microseconds for multiplication with GPU: " << t2 << std::endl;
@@ -259,6 +270,9 @@ int main (int argc, char* argv[]) {
     std::cout << "Microseconds for addition with CPU: " << t3 << std::endl;
     std::cout << "Microseconds for subtraction with CPU: " << t6 << std::endl;
     std::cout << "Microseconds for multiplication with CPU: " << t4 << std::endl;
+
+    std::cout << "\nMicroseconds required to execute 5 chained multiplications of m1 with identity matrices" << std::endl;
+    std::cout << "with leaveDataOnGPU active: " << t7 << std::endl;
     std::cout << std::endl;
 
     bool accuracy = true;
@@ -278,7 +292,7 @@ int main (int argc, char* argv[]) {
     std::cout << "The subtraction kernel is " << (accuracy ? "accurate" : "not accurate") << std::endl;
     if (!accuracy) {
         overall_accuracy = false;
-        std::tie(locY, locX, V1, V2) = locateError<type>(m5, m3);
+        std::tie(locY, locX, V1, V2) = locateError<type>(m7, m8);
         std::cout << "\tThe offending location is: " << locY << ", " << locX << std::endl;
         std::cout << "\tThe CPU provided: " << V1 << std::endl;
         std::cout << "\tThe GPU provided: " << V2 << std::endl;
@@ -287,7 +301,7 @@ int main (int argc, char* argv[]) {
     std::cout << "The multiplication kernel is " << (accuracy ? "accurate" : "not accurate") << std::endl;
     if (!accuracy) {
         overall_accuracy = false;
-        std::tie(locY, locX, V1, V2) = locateError<type>(m5, m3);
+        std::tie(locY, locX, V1, V2) = locateError<type>(m6, m4);
         std::cout << "\tThe offending location is: " << locY << ", " << locX << std::endl;
         std::cout << "\tThe CPU provided: " << V1 << std::endl;
         std::cout << "\tThe GPU provided: " << V2 << std::endl;
@@ -296,8 +310,9 @@ int main (int argc, char* argv[]) {
         std::cout << std::endl;
         std::cout << "Note: Since the comparison is between CPU and GPU computation, floating point error may occur." << std::endl;
         std::cout << "If the offending values are reasonably close then the kernel is most likely still accurate." << std::endl;
-        std::cout << "Also, Location (0, 0) with values 0, and 0 mean that the error could not be located a second time." << std::endl;
+        //std::cout << "Also, Location (0, 0) with values 0, and 0 mean that the error could not be located a second time." << std::endl;
     }
+    std::cout << std::endl;
 
     LinAlgo::BreakDownGPU();
 

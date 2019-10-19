@@ -28,7 +28,7 @@ using namespace LinAlgo;
 */
 template <class ItemType>
 matrix<ItemType>::matrix (const size_t& height, const size_t& width, const ItemType& val, bool enable_gpu) : m_height (height), m_width (width), m_useGPU (enable_gpu),
-    m_gpuUpToDate (false), m_gpuData (NULL), m_gpuHeight (NULL),
+    m_gpuUpToDate (false), m_gpuData (NULL), m_gpuHeight (NULL), m_leaveOnGPU(false),
     m_gpuWidth (NULL), m_command_queue (NULL), m_gpuSlicesUpToDate (height, false) {
     m_data.resize (m_height);
     for (size_t i = 0; i < m_height; i++) {
@@ -80,18 +80,21 @@ matrix<ItemType>::matrix (const std::vector<std::vector<ItemType>>& vals, bool e
 */
 template <class ItemType>
 template <class ArgType>
-matrix<ItemType>::matrix (const matrix<ArgType>& M) : m_useGPU (M.m_useGPU), m_gpuUpToDate (false),
+matrix<ItemType>::matrix (const matrix<ArgType>& M) : m_useGPU (M.useGPU()), m_gpuUpToDate (false),
     m_gpuData (NULL), m_gpuHeight (NULL),
     m_gpuWidth (NULL), m_command_queue (NULL),
-    m_gpuSlicesUpToDate (M.m_height, false), m_leaveOnGPU (M.m_leaveOnGPU) {
-    m_height = M.m_height;
-    m_width = M.m_width;
+    m_gpuSlicesUpToDate (M.getHeight, false), m_leaveOnGPU (M.leaveDataOnGPU()) {
+    m_height = M.getHeight();
+    m_width = M.getWidth();
     m_upToDate = 0;//this will defo be different later
     m_data.resize (m_height);
+    if (M.leaveDataOnGPU()) {
+        M.pullData();
+    }
     for (size_t i = 0; i < m_height; i++) {
         m_data[i] = new std::vector<ItemType> (m_width);
         for (size_t j = 0; j < m_width; j++) {
-            (*m_data[i])[j] = ItemType ((*M.m_data[i])[j]);
+            (*m_data[i])[j] = ItemType (M[i][j]);
         }
     }
 }
@@ -239,6 +242,14 @@ bool matrix<ItemType>::useGPU (bool use_it) {
         return true;
     }
     return false;
+}
+
+/**
+* @brief Return if the matrix is using the GPU
+*/
+template <class ItemType>
+bool matrix<ItemType>::useGPU() const {
+    return m_useGPU;
 }
 //}
 // </editor-fold>
@@ -487,6 +498,44 @@ matrix<ItemType>::iterator<ItemType> matrix<ItemType>::end() {
     return iterator<ItemType>(m_width * m_height - 1, 0, m_width * m_height - 1, m_width, &m_data);
 }
 
+/**
+* @brief Sets whether or not data should be left on the GPU to increase performance
+*/
+template <class ItemType>
+bool matrix<ItemType>::leaveDataOnGPU(bool val) {
+    return m_leaveOnGPU = val;
+}
+
+/**
+* @brief Returns whether or not data is being left on the GPU
+*/
+template <class ItemType>
+bool matrix<ItemType>::leaveDataOnGPU() const {
+    return m_leaveOnGPU;
+}
+
+/**
+* @brief Manually pulls data from the GPU
+*/
+template <class ItemType>
+bool matrix<ItemType>::pullData() {
+    initQueue();
+    cl_int ret = pullFromGPU(m_command_queue);
+    clFinish(m_command_queue);
+    return ret == CL_SUCCESS;
+}
+
+/**
+* @brief Manually pushes data to the GPU
+*/
+template <class ItemType>
+bool matrix<ItemType>::pushData() {
+    initQueue();
+    cl_int ret = pushToGPU(m_command_queue);
+    clFinish(m_command_queue);
+    return ret == CL_SUCCESS;
+}
+
 //}
 // </editor-fold>
 #pragma endregion
@@ -511,7 +560,16 @@ matrix<ItemType> matrix<ItemType>::add (matrix<ArgType>& M) {
     //can be made easily enough if they want concatenation...
     //yeah, i'll change this later
     matrix<ItemType> result (m_height < M.m_height ? m_height : M.m_height, m_width < M.m_width ? m_width : M.m_width);
+    result.useGPU(m_useGPU);
+    if (m_leaveOnGPU) {
+        result.m_leaveOnGPU = true;
+    }
     if (! (m_useGPU || ALL_USE_GPU)) { //if don't use the gpu
+        if (M.m_leaveOnGPU) {
+            M.initQueue();
+            M.pullFromGPU(M.m_command_queue);
+            clFinish(M.m_command_queue);
+        }
         for (size_t i = 0; i < result.m_height; i++) {
             for (size_t j = 0; j < result.m_width; j++) {
                 (*result.m_data[i])[j] = (*m_data[i])[j] + (*M.m_data[i])[j];
@@ -548,7 +606,9 @@ matrix<ItemType> matrix<ItemType>::add (matrix<ArgType>& M) {
         } else {
             printf ("Can't GPU compute, matrices are of differing types.\n");
         }
-        result.pullFromGPU (m_command_queue);
+        if (!result.m_leaveOnGPU) {
+            result.pullFromGPU (m_command_queue);
+        }
         clFinish (m_command_queue);
         clReleaseCommandQueue (m_command_queue);
         m_command_queue = NULL;
@@ -565,6 +625,10 @@ template <class ItemType>
 template <class ArgType>
 matrix<ItemType> matrix<ItemType>::add (const ArgType& val) {
     matrix<ItemType> result (m_height, m_width);
+    result.useGPU(m_useGPU);
+    if (m_leaveOnGPU) {
+        result.m_leaveOnGPU = true;
+    }
     if (! (m_useGPU || ALL_USE_GPU)) { //if don't use the gpu
         for (size_t i = 0; i < result.m_height; i++) {
             for (size_t j = 0; j < result.m_width; j++) {
@@ -597,7 +661,9 @@ matrix<ItemType> matrix<ItemType>::add (const ArgType& val) {
         } else {
             printf ("Can't GPU compute, unsupported item type.\n");
         }
-        result.pullFromGPU (m_command_queue);
+        if (!result.m_leaveOnGPU) {
+            result.pullFromGPU (m_command_queue);
+        }
         clFinish (m_command_queue);
         clReleaseCommandQueue (m_command_queue);
         m_command_queue = NULL;
@@ -643,7 +709,16 @@ matrix<ItemType> matrix<ItemType>::subtract (matrix<ArgType>& M) {
     //can be made easily enough if they want concatenation...
     //yeah, i'll change this later
     matrix<ItemType> result (m_height < M.m_height ? m_height : M.m_height, m_width < M.m_width ? m_width : M.m_width);
+    result.useGPU(m_useGPU);
+    if (m_leaveOnGPU) {
+        result.m_leaveOnGPU = true;
+    }
     if (! (m_useGPU || ALL_USE_GPU)) { //if don't use the gpu
+        if (M.m_leaveOnGPU) {
+            M.initQueue();
+            M.pullFromGPU(M.m_command_queue);
+            clFinish(M.m_command_queue);
+        }
         for (size_t i = 0; i < result.m_height; i++) {
             for (size_t j = 0; j < result.m_width; j++) {
                 (*result.m_data[i])[j] = (*m_data[i])[j] - (*M.m_data[i])[j];
@@ -680,7 +755,9 @@ matrix<ItemType> matrix<ItemType>::subtract (matrix<ArgType>& M) {
         } else {
             printf ("Can't GPU compute, matrices are of differing types.\n");
         }
-        result.pullFromGPU (m_command_queue);
+        if (!result.m_leaveOnGPU) {
+            result.pullFromGPU (m_command_queue);
+        }
         clFinish (m_command_queue);
         clReleaseCommandQueue (m_command_queue);
         m_command_queue = NULL;
@@ -699,6 +776,10 @@ template <class ItemType>
 template <class ArgType>
 matrix<ItemType> matrix<ItemType>::subtract (const ArgType& val) {
     matrix<ItemType> result (m_height, m_width);
+    result.useGPU(m_useGPU);
+    if (m_leaveOnGPU) {
+        result.m_leaveOnGPU = true;
+    }
     if (! (m_useGPU || ALL_USE_GPU)) { //if don't use the gpu
         for (size_t i = 0; i < result.m_height; i++) {
             for (size_t j = 0; j < result.m_width; j++) {
@@ -731,7 +812,9 @@ matrix<ItemType> matrix<ItemType>::subtract (const ArgType& val) {
         } else {
             printf ("Can't GPU compute, unsupported item type.\n");
         }
-        result.pullFromGPU (m_command_queue);
+        if (!result.m_leaveOnGPU) {
+            result.pullFromGPU (m_command_queue);
+        }
         clFinish (m_command_queue);
         clReleaseCommandQueue (m_command_queue);
         m_command_queue = NULL;
@@ -781,7 +864,16 @@ matrix<ItemType> matrix<ItemType>::multiply (matrix<ArgType>& M) {
         return matrix<ItemType> (0, 0); //null matrix
     }
     matrix<ItemType> result (m_height, M.m_width);
+    result.useGPU(m_useGPU);
+    if (m_leaveOnGPU) {
+        result.m_leaveOnGPU = true;
+    }
     if (! (m_useGPU || ALL_USE_GPU)) { //if don't use the gpu
+        if (M.m_leaveOnGPU) {
+            M.initQueue();
+            M.pullFromGPU(M.m_command_queue);
+            clFinish(M.m_command_queue);
+        }
         for (size_t i = 0; i < result.m_height; i++) {
             for (size_t j = 0; j < result.m_width; j++) {
                 ItemType sum = ItemType (0);
@@ -822,7 +914,9 @@ matrix<ItemType> matrix<ItemType>::multiply (matrix<ArgType>& M) {
         } else {
             printf ("Can't GPU compute, matrices are of differing types.\n");
         }
-        result.pullFromGPU (m_command_queue);
+        if (!result.m_leaveOnGPU) {
+            result.pullFromGPU (m_command_queue);
+        }
         clFinish (m_command_queue);
         return result;
     }
@@ -839,6 +933,10 @@ template <class ItemType>
 template <class ArgType>
 matrix<ItemType> matrix<ItemType>::multiply (const ArgType& val) {
     matrix<ItemType> result (m_height, m_width);
+    result.useGPU(m_useGPU);
+    if (m_leaveOnGPU) {
+        result.m_leaveOnGPU = true;
+    }
     if (! (m_useGPU || ALL_USE_GPU)) { //if don't use the gpu
         for (size_t i = 0; i < result.m_height; i++) {
             for (size_t j = 0; j < result.m_width; j++) {
@@ -871,7 +969,9 @@ matrix<ItemType> matrix<ItemType>::multiply (const ArgType& val) {
         } else {
             printf ("Can't GPU compute, unsupported item type.\n");
         }
-        result.pullFromGPU (m_command_queue);
+        if (!result.m_leaveOnGPU) {
+            result.pullFromGPU (m_command_queue);
+        }
         clFinish (m_command_queue);
         clReleaseCommandQueue (m_command_queue);
         m_command_queue = NULL;
@@ -891,7 +991,16 @@ matrix<ItemType> matrix<ItemType>::elementMultiply (matrix<ArgType>& M) {
     //can be made easily enough if they want concatenation...
     //yeah, i'll change this later
     matrix<ItemType> result (m_height < M.m_height ? m_height : M.m_height, m_width < M.m_width ? m_width : M.m_width);
+    result.m_useGPU(m_useGPU);
+    if (m_leaveOnGPU) {
+        result.m_leaveOnGPU = true;
+    }
     if (! (m_useGPU || ALL_USE_GPU)) { //if don't use the gpu
+        if (M.m_leaveOnGPU) {
+            M.initQueue();
+            M.pullFromGPU(M.m_command_queue);
+            clFinish(M.m_command_queue);
+        }
         for (size_t i = 0; i < result.m_height; i++) {
             for (size_t j = 0; j < result.m_width; j++) {
                 (*result.m_data[i])[j] = (*m_data[i])[j] * (*M.m_data[i])[j];
@@ -929,7 +1038,9 @@ matrix<ItemType> matrix<ItemType>::elementMultiply (matrix<ArgType>& M) {
         } else {
             printf ("Can't GPU compute, matrices are of differing types.\n");
         }
-        result.pullFromGPU (m_command_queue);
+        if (!result.m_leaveOnGPU) {
+            result.pullFromGPU (m_command_queue);
+        }
         clFinish (m_command_queue);
         return result;
     }
@@ -991,6 +1102,9 @@ template <class ItemType>
 template <class ArgType>
 matrix<ItemType> matrix<ItemType>::divide (const ArgType& val) {
     matrix<ItemType> result (m_height, m_width);
+    if (m_leaveOnGPU) {
+        result.m_leaveOnGPU = true;
+    }
     if (! (m_useGPU || ALL_USE_GPU)) { //if don't use the gpu
         for (size_t i = 0; i < result.m_height; i++) {
             for (size_t j = 0; j < result.m_width; j++) {
@@ -1023,7 +1137,9 @@ matrix<ItemType> matrix<ItemType>::divide (const ArgType& val) {
         } else {
             printf ("Can't GPU compute, unsupported item type.\n");
         }
-        result.pullFromGPU (m_command_queue);
+        if (!result.m_leaveOnGPU) {
+            result.pullFromGPU (m_command_queue);
+        }
         clFinish (m_command_queue);
         clReleaseCommandQueue (m_command_queue);
         m_command_queue = NULL;
@@ -1043,6 +1159,9 @@ matrix<ItemType> matrix<ItemType>::elementDivide (matrix<ArgType>& M) {
     //can be made easily enough if they want concatenation...
     //yeah, i'll change this later
     matrix<ItemType> result (m_height < M.m_height ? m_height : M.m_height, m_width < M.m_width ? m_width : M.m_width);
+    if (m_leaveOnGPU) {
+        result.m_leaveOnGPU = true;
+    }
     if (! (m_useGPU || ALL_USE_GPU)) { //if don't use the gpu
         for (size_t i = 0; i < result.m_height; i++) {
             for (size_t j = 0; j < result.m_width; j++) {
@@ -1081,7 +1200,9 @@ matrix<ItemType> matrix<ItemType>::elementDivide (matrix<ArgType>& M) {
         } else {
             printf ("Can't GPU compute, matrices are of differing types.\n");
         }
-        result.pullFromGPU (m_command_queue);
+        if (result.m_leaveOnGPU) {
+            result.pullFromGPU (m_command_queue);
+        }
         clFinish (m_command_queue);
         return result;
     }
@@ -1148,6 +1269,8 @@ matrix<ItemType>& matrix<ItemType>::transpose() {
 * @param[y] The row to be sliced.
 *
 * @return A reference to the std::vector storing the appropriate row of the matrix. use with caution pls.
+*
+* @note If m_leaveOnGPU is set, don't forget to retrieve data first and/or push data after
 */
 template <class ItemType>
 std::vector<ItemType>& matrix<ItemType>::operator[] (size_t y) const {
@@ -1155,63 +1278,6 @@ std::vector<ItemType>& matrix<ItemType>::operator[] (size_t y) const {
     //the data in ram can be changed by this...
     //how to make sure unchanged assumes gpu is safe
     //but know when it's been changed?
-}
-
-/**
-* @brief Assignment operator whoot
-*
-* @param[M] The matrix to be copied.
-*
-* @return A reference to the lhs matrix.
-*/
-template <class ItemType>
-template <class ArgType>
-matrix<ItemType>& matrix<ItemType>::operator= (const matrix<ArgType>& M) {
-    if (m_height != M.m_height) {
-        m_data.resize (M.m_height);
-        m_height = M.m_height;
-    }
-    if (m_width != M.m_width) {
-        if (m_width == 0) {
-            for (size_t i = 0; i < m_height; i++) {
-                m_data[i] = new std::vector<ItemType>(M.m_width);
-            }
-        } else {
-            for (size_t i = 0; i < m_height; i++) {
-                (*m_data[i]).resize (M.m_width);
-            }
-        }
-        m_width = M.m_width;
-    }
-    for (size_t i = 0; i < m_height; i++) {
-        for (size_t j = 0; j < m_width; j++) {
-            (*m_data[i])[j] = ItemType ((*M.m_data[i])[j]);
-        }
-    }
-
-    m_gpuUpToDate = false;
-    m_gpuSlicesUpToDate.resize (m_height, false);
-    m_upToDate = 0;//if eigenvalues and stuff get copied over, this will be different
-    m_useGPU = M.m_useGPU;
-    if (m_command_queue) {
-        clFinish (m_command_queue);
-        m_command_queue = NULL;
-    }
-    if (m_gpuData) {
-        clReleaseMemObject (m_gpuData);
-        m_gpuData = NULL;
-    }
-    if (m_gpuHeight) {
-        clReleaseMemObject (m_gpuHeight);
-        m_gpuHeight = NULL;
-    }
-    if (m_gpuWidth) {
-        clReleaseMemObject (m_gpuWidth);
-        m_gpuWidth = NULL;
-    }
-
-    //clear everything else that's now irrelevent (or copy things that are over lol)
-    return *this;
 }
 
 /**
@@ -1262,6 +1328,12 @@ matrix<ItemType>& matrix<ItemType>::operator= (const matrix<ItemType>& M) {
         m_gpuHeight = NULL;
         m_gpuWidth = NULL;
     } else {
+        if (M.m_leaveOnGPU) {
+            m_leaveOnGPU = true;
+            M.initQueue();
+            M.pullFromGPU(M.m_command_queue);
+            clFinish(M.m_command_queue);
+        }
         for (size_t i = 0; i < m_height; i++) {
             for (size_t j = 0; j < m_width; j++) {
                 (*m_data[i])[j] = (*M.m_data[i])[j];
@@ -1310,6 +1382,67 @@ matrix<ItemType>& matrix<ItemType>::operator= (matrix<ItemType>&& M) {
     m_leaveOnGPU = M.m_leaveOnGPU;
     m_gpuUpToDate = M.m_gpuUpToDate;
     m_gpuSlicesUpToDate = M.m_gpuSlicesUpToDate;
+    return *this;
+}
+
+/**
+* @brief Assignment operator whoot
+*
+* @param[M] The matrix to be copied.
+*
+* @return A reference to the lhs matrix.
+*/
+template <class ItemType>
+template <class ArgType>
+matrix<ItemType>& matrix<ItemType>::operator= (const matrix<ArgType>& M) {
+    if (m_height != M.getHeight()) {
+        m_data.resize (M.getHeight());
+        m_height = M.getHeight();
+    }
+    if (m_width != M.getWidth()) {
+        if (m_width == 0) {
+            for (size_t i = 0; i < m_height; i++) {
+                m_data[i] = new std::vector<ItemType>(M.getWidth());
+            }
+        } else {
+            for (size_t i = 0; i < m_height; i++) {
+                (*m_data[i]).resize (M.getWidth());
+            }
+        }
+        m_width = M.getWidth();
+    }
+    if (M.leaveDataOnGPU()) {
+        m_leaveOnGPU = true;
+        M.pullData();
+    }
+    for (size_t i = 0; i < m_height; i++) {
+        for (size_t j = 0; j < m_width; j++) {
+            (*m_data[i])[j] = ItemType (M[i][j]);
+        }
+    }
+
+    m_gpuUpToDate = false;
+    m_gpuSlicesUpToDate.resize (m_height, false);
+    m_upToDate = 0;//if eigenvalues and stuff get copied over, this will be different
+    m_useGPU = M.useGPU();
+    if (m_command_queue) {
+        clFinish (m_command_queue);
+        m_command_queue = NULL;
+    }
+    if (m_gpuData) {
+        clReleaseMemObject (m_gpuData);
+        m_gpuData = NULL;
+    }
+    if (m_gpuHeight) {
+        clReleaseMemObject (m_gpuHeight);
+        m_gpuHeight = NULL;
+    }
+    if (m_gpuWidth) {
+        clReleaseMemObject (m_gpuWidth);
+        m_gpuWidth = NULL;
+    }
+
+    //clear everything else that's now irrelevent (or copy things that are over lol)
     return *this;
 }
 

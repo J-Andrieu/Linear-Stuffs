@@ -25,7 +25,7 @@
 * LinAlgo::AllUseGPU for all matrices to use the gpu, or individually call m.useGPU() to
 * allow select matrices
 */
-template <class ItemType>
+template <class ItemType = double>
 class LinAlgo::matrix {
 public:
     //constructors
@@ -43,7 +43,11 @@ public:
     void fill (ItemType val);
     void clear();
     bool useGPU (bool);
+    bool useGPU() const;
     bool leaveDataOnGPU (bool); //don't pull data for chained operations
+    bool leaveDataOnGPU () const; //will return if the data is being left on the GPU
+    bool pushData();//manually move data to and from the CPU
+    bool pullData();
 
     //setters and getters
     ItemType get (size_t y, size_t x) const;
@@ -64,7 +68,7 @@ public:
 
     //Idk if these should count as getters and setters or not
     ItemType getDeterminant();
-    ItemType trace();
+    ItemType trace();//this doesn't use the gpu, so be sure to pull from the gpu if m_leaveOnGPU is set
 
     std::vector<ItemType> getEigenValues();
     std::vector<ItemType> getEigenVector (ItemType);
@@ -165,6 +169,7 @@ public:
     template <class ArgType>
     matrix<ItemType>& operator/= (const ArgType& val);
 
+    //All the friendly LinAlgo functions
     template <class ArgType>
     friend matrix<ArgType> LinAlgo::transpose (const matrix<ArgType>& M);
     template <class ArgType>

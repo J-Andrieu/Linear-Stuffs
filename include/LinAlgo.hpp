@@ -38,7 +38,8 @@ namespace LinAlgo {
     template <class ItemType>
     class matrix;
 
-    matrix<double> identityMatrix(size_t N);
+    template <class ItemType = double>
+    matrix<ItemType> identityMatrix(size_t N);
     template <class ItemType>
     matrix<ItemType> columnVector(std::vector<ItemType> vec);
     //these aren't going to be terribly efficient, especially for the small vectors one would normally use these on
@@ -392,6 +393,30 @@ static bool LinAlgo::IsGPUInitialized() {
 
 #pragma region Linear Algebra Functions
 // <editor-fold desc="Linear Algebra Functions">
+
+/**
+* @brief Creates an identity matrix of the specified size
+*/
+template <class ItemType = double>
+LinAlgo::matrix<ItemType> LinAlgo::identityMatrix(size_t N) {
+    matrix<ItemType> M(N, N, 0);
+    for (size_t i = 0; i < N; i++) {
+        M[i][i] = 1;
+    }
+    return M;
+}
+
+/**
+* @brief Creates a column vector from a provided vector
+*/
+template <class ItemType>
+LinAlgo::matrix<ItemType> LinAlgo::columnVector(std::vector<ItemType> vec) {
+    matrix<ItemType> M(vec.size(), 1);
+    for (size_t i = 0; i < vec.size(); i++) {
+        M[i][0] = vec[i];
+    }
+    return M;
+}
 
 /**
 * @brief Non-overwriting matrix transposition
