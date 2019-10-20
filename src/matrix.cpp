@@ -157,13 +157,19 @@ matrix<ItemType>::matrix (matrix<ItemType>&& M) : m_useGPU (M.m_useGPU), m_gpuUp
 */
 template <class ItemType>
 matrix<ItemType>::~matrix() {
-    /*
-    clFinish(m_command_queue);
-    clReleaseCommandQueue(m_command_queue);
-    clReleaseMemObject(m_gpuData);
-    clReleaseMemObject(m_gpuHeight);//causes read violations???
-    clReleaseMemObject(m_gpuWidth);
-    */
+    if (m_command_queue != NULL) {
+        clFinish(m_command_queue);
+        clReleaseCommandQueue(m_command_queue);
+    }
+    if (m_gpuData != NULL) {
+        clReleaseMemObject(m_gpuData);
+    }
+    if (m_gpuHeight != NULL) {
+        clReleaseMemObject(m_gpuHeight);//causes read violations???
+    }
+    if (m_gpuWidth != NULL) {
+        clReleaseMemObject(m_gpuWidth);
+    }
 }
 //}
 // </editor-fold>
