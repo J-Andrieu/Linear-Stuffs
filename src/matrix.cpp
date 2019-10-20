@@ -528,6 +528,8 @@ bool matrix<ItemType>::pullData() {
     initQueue();
     cl_int ret = pullFromGPU(m_command_queue);
     clFinish(m_command_queue);
+    clReleaseCommandQueue(m_command_queue);
+    m_command_queue = NULL;
     return ret == CL_SUCCESS;
 }
 
@@ -539,6 +541,8 @@ bool matrix<ItemType>::pushData() {
     initQueue();
     cl_int ret = pushToGPU(m_command_queue);
     clFinish(m_command_queue);
+    clReleaseCommandQueue(m_command_queue);
+    m_command_queue = NULL;
     return ret == CL_SUCCESS;
 }
 
@@ -575,6 +579,8 @@ matrix<ItemType> matrix<ItemType>::add (matrix<ArgType>& M) {
             M.initQueue();
             M.pullFromGPU(M.m_command_queue);
             clFinish(M.m_command_queue);
+            clReleaseCommandQueue(M.m_command_queue);
+            M.m_command_queue = NULL;
         }
         for (size_t i = 0; i < result.m_height; i++) {
             for (size_t j = 0; j < result.m_width; j++) {
@@ -724,6 +730,8 @@ matrix<ItemType> matrix<ItemType>::subtract (matrix<ArgType>& M) {
             M.initQueue();
             M.pullFromGPU(M.m_command_queue);
             clFinish(M.m_command_queue);
+            clReleaseCommandQueue(M.m_command_queue);
+            M.m_command_queue = NULL;
         }
         for (size_t i = 0; i < result.m_height; i++) {
             for (size_t j = 0; j < result.m_width; j++) {
@@ -879,6 +887,8 @@ matrix<ItemType> matrix<ItemType>::multiply (matrix<ArgType>& M) {
             M.initQueue();
             M.pullFromGPU(M.m_command_queue);
             clFinish(M.m_command_queue);
+            clReleaseCommandQueue(M.m_command_queue);
+            M.m_command_queue = NULL;
         }
         for (size_t i = 0; i < result.m_height; i++) {
             for (size_t j = 0; j < result.m_width; j++) {
@@ -924,6 +934,8 @@ matrix<ItemType> matrix<ItemType>::multiply (matrix<ArgType>& M) {
             result.pullFromGPU (m_command_queue);
         }
         clFinish (m_command_queue);
+        clReleaseCommandQueue(m_command_queue);
+        m_command_queue = NULL;
         return result;
     }
 }
@@ -1006,6 +1018,8 @@ matrix<ItemType> matrix<ItemType>::elementMultiply (matrix<ArgType>& M) {
             M.initQueue();
             M.pullFromGPU(M.m_command_queue);
             clFinish(M.m_command_queue);
+            clReleaseCommandQueue(M.m_command_queue);
+            M.m_command_queue = NULL;
         }
         for (size_t i = 0; i < result.m_height; i++) {
             for (size_t j = 0; j < result.m_width; j++) {
@@ -1048,6 +1062,8 @@ matrix<ItemType> matrix<ItemType>::elementMultiply (matrix<ArgType>& M) {
             result.pullFromGPU (m_command_queue);
         }
         clFinish (m_command_queue);
+        clReleaseCommandQueue(m_command_queue);
+        m_command_queue = NULL;
         return result;
     }
 }
@@ -1169,6 +1185,13 @@ matrix<ItemType> matrix<ItemType>::elementDivide (matrix<ArgType>& M) {
         result.m_leaveOnGPU = true;
     }
     if (! (m_useGPU || ALL_USE_GPU)) { //if don't use the gpu
+        if (M.m_leaveOnGPU) {
+            M.initQueue();
+            M.pullFromGPU(M.m_command_queue);
+            clFinish(M.m_command_queue);
+            clReleaseCommandQueue(M.m_command_queue);
+            M.m_command_queue = NULL;
+        }
         for (size_t i = 0; i < result.m_height; i++) {
             for (size_t j = 0; j < result.m_width; j++) {
                 (*result.m_data[i])[j] = (*m_data[i])[j] / (*M.m_data[i])[j];
@@ -1210,6 +1233,8 @@ matrix<ItemType> matrix<ItemType>::elementDivide (matrix<ArgType>& M) {
             result.pullFromGPU (m_command_queue);
         }
         clFinish (m_command_queue);
+        clReleaseCommandQueue(m_command_queue);
+        m_command_queue = NULL;
         return result;
     }
 }
@@ -1513,9 +1538,9 @@ cl_int matrix<ItemType>::initQueue() {
     }
     cl_int ret;
     if (OPENCL_VERSION >= 2.0) {
-        m_command_queue = clCreateCommandQueueWithProperties (m_context, m_device_id, 0, &ret); //segfaults on manjaro/radeon
+        m_command_queue = clCreateCommandQueueWithProperties (m_context, m_device_id, 0, &ret); 
     } else {
-        m_command_queue = clCreateCommandQueue (m_context, m_device_id, 0, &ret); //infinite hange on manjaro/radeon
+        m_command_queue = clCreateCommandQueue (m_context, m_device_id, 0, &ret); 
     }
     if (ret != CL_SUCCESS) {
         printf ("Unable to create command queue, error code: %d\n", ret);
@@ -1537,7 +1562,7 @@ cl_int matrix<ItemType>::createResultBuffer (cl_command_queue& command_queue) {
     }
 
     cl_int ret;
-    m_gpuData = clCreateBuffer (m_context, CL_MEM_READ_ONLY, m_height * m_width * sizeof (ItemType), NULL, &ret);
+    m_gpuData = clCreateBuffer (m_context, CL_MEM_READ_WRITE, m_height * m_width * sizeof (ItemType), NULL, &ret);
     if (ret != CL_SUCCESS) {
         printf ("Unable to create memory buffer, error code: %d\n", ret);
         return ret;
@@ -1569,6 +1594,7 @@ cl_int matrix<ItemType>::createResultBuffer (cl_command_queue& command_queue) {
 
     m_upToDate |= (dataFlag::GPU_HEIGHT | dataFlag::GPU_WIDTH);
 
+    clFinish (command_queue);
     return ret;
 }
 
@@ -1581,9 +1607,9 @@ cl_int matrix<ItemType>::pushToGPU (cl_command_queue& command_queue) {
 
     cl_int ret;
     if (!m_gpuData) {
-        m_gpuData = clCreateBuffer (m_context, CL_MEM_READ_ONLY, m_height * m_width * sizeof (ItemType), NULL, &ret);
+        m_gpuData = clCreateBuffer (m_context, CL_MEM_READ_WRITE, m_height * m_width * sizeof (ItemType), NULL, &ret);
         if (ret != CL_SUCCESS) {
-            printf ("Unable to create memory buffer, error code: %d\n", ret);
+            printf ("6) Unable to create memory buffer, error code: %d\n", ret);
             return ret;
         }
     }
@@ -1591,7 +1617,7 @@ cl_int matrix<ItemType>::pushToGPU (cl_command_queue& command_queue) {
     if (!m_gpuHeight) {
         m_gpuHeight = clCreateBuffer (m_context, CL_MEM_READ_ONLY, sizeof (ItemType), NULL, &ret);
         if (ret != CL_SUCCESS) {
-            printf ("Unable to create memory buffer, error code: %d\n", ret);
+            printf ("5) Unable to create memory buffer, error code: %d\n", ret);
             return ret;
         }
     }
@@ -1599,7 +1625,7 @@ cl_int matrix<ItemType>::pushToGPU (cl_command_queue& command_queue) {
     if (!m_gpuWidth) {
         m_gpuWidth = clCreateBuffer (m_context, CL_MEM_READ_ONLY, sizeof (ItemType), NULL, &ret);
         if (ret != CL_SUCCESS) {
-            printf ("Unable to create memory buffer, error code: %d\n", ret);
+            printf ("4) Unable to create memory buffer, error code: %d\n", ret);
             return ret;
         }
     }
@@ -1609,7 +1635,7 @@ cl_int matrix<ItemType>::pushToGPU (cl_command_queue& command_queue) {
             if (!m_gpuSlicesUpToDate[i]) {
                 ret = clEnqueueWriteBuffer (command_queue, m_gpuData, CL_TRUE, i * m_width * sizeof (ItemType), m_width * sizeof (ItemType), (*m_data[i]).data(), 0, NULL, NULL);
                 if (ret != CL_SUCCESS) {
-                    printf ("Unable to push data to GPU, error code: %d\n", ret);
+                    printf ("1) Unable to push data to GPU, error code: %d\n", ret);
                     return ret;
                 }
                 m_gpuSlicesUpToDate[i] = true;
@@ -1621,7 +1647,7 @@ cl_int matrix<ItemType>::pushToGPU (cl_command_queue& command_queue) {
     if (! (m_upToDate & dataFlag::GPU_HEIGHT)) {
         ret = clEnqueueWriteBuffer (command_queue, m_gpuHeight, CL_TRUE, 0, sizeof (ItemType), &m_height, 0, NULL, NULL);
         if (ret != CL_SUCCESS) {
-            printf ("Unable to push data to GPU, error code: %d\n", ret);
+            printf ("2) Unable to push data to GPU, error code: %d\n", ret);
             return ret;
         }
         m_upToDate |= dataFlag::GPU_HEIGHT;
@@ -1630,7 +1656,7 @@ cl_int matrix<ItemType>::pushToGPU (cl_command_queue& command_queue) {
     if (! (m_upToDate & dataFlag::GPU_WIDTH)) {
         ret = clEnqueueWriteBuffer (command_queue, m_gpuWidth, CL_TRUE, 0, sizeof (ItemType), &m_width, 0, NULL, NULL);
         if (ret != CL_SUCCESS) {
-            printf ("Unable to push data to GPU, error code: %d\n", ret);
+            printf ("3) Unable to push data to GPU, error code: %d\n", ret);
             return ret;
         }
         m_upToDate |= dataFlag::GPU_WIDTH;
@@ -1638,6 +1664,7 @@ cl_int matrix<ItemType>::pushToGPU (cl_command_queue& command_queue) {
 
     m_gpuUpToDate = true;
 
+    clFinish (command_queue);
     return ret;
 }
 
@@ -1656,6 +1683,8 @@ cl_int matrix<ItemType>::pullFromGPU (cl_command_queue& command_queue) {
     }
     m_gpuUpToDate = true;
     m_upToDate |= dataFlag::GPU_DATA;
+    
+    clFinish (command_queue);
     return ret;
 }
 //}
@@ -1709,6 +1738,8 @@ cl_int matrix<ItemType>::execute_add_kernel (cl_kernel kernel, matrix<ItemType>&
     if (ret != CL_SUCCESS) {
         printf ("Could not execute kernel. Error Code: %d\n", ret);
     }
+    
+    clFinish (m_command_queue);
     return ret;
 }
 
@@ -1750,6 +1781,8 @@ cl_int matrix<ItemType>::execute_multiply_kernel (cl_kernel kernel, matrix<ItemT
     if (ret != CL_SUCCESS) {
         printf ("Could not execute kernel. Error Code: %d\n", ret);
     }
+    
+    clFinish (m_command_queue);
     return ret;
 }
 
