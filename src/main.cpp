@@ -255,7 +255,7 @@ int main (int argc, char* argv[]) {
     m1 = m1.subMatrix(0, 0, m1.getHeight() < m1.getWidth() ? m1.getHeight() : m1.getWidth(), m1.getHeight() < m1.getWidth() ? m1.getHeight() : m1.getWidth());
     m1.leaveDataOnGPU(true);
     m1.useGPU(true);
-    LinAlgo::matrix<type> id = LinAlgo::matrix<type>::identity(m1.getHeight());
+    LinAlgo::matrix<type> id = LinAlgo::identityMatrix<type>(m1.getHeight());
     id.leaveDataOnGPU(true);
     id.useGPU(true);
     t.start();
