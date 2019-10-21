@@ -290,6 +290,7 @@ int main (int argc, char* argv[]) {
     long long int t7 = t.getMicrosecondsElapsed();
     out1->pullData();
 
+
     std::cout << "Microseconds for addition with GPU: " << t1 << std::endl;
     std::cout << "Microseconds for subtraction with GPU: " << t5 << std::endl;
     std::cout << "Microseconds for multiplication with GPU: " << t2 << std::endl;
@@ -323,7 +324,7 @@ int main (int argc, char* argv[]) {
     std::cout << "The subtraction kernel is " << (accuracy ? "accurate" : "not accurate") << std::endl;
     if (!accuracy) {
         overall_accuracy = false;
-        std::tie(locY, locX, V1, V2) = locateError<type>(m7, m8);
+        std::tie(locY, locX, V1, V2) = locateError<type>(m8, m7);
         std::cout << "\tThe offending location is: " << locY << ", " << locX << std::endl;
         std::cout << "\tThe CPU provided: " << V1 << std::endl;
         std::cout << "\tThe GPU provided: " << V2 << std::endl;

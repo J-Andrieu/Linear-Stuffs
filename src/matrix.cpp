@@ -536,6 +536,10 @@ matrix<ItemType>::iterator<ItemType> matrix<ItemType>::end() {
 */
 template <class ItemType>
 bool matrix<ItemType>::leaveDataOnGPU(bool val) {
+    m_gpuUpToDate = false;
+    m_gpuSlicesUpToDate.clear();
+    m_gpuSlicesUpToDate.resize(m_height, false);
+    m_upToDate &= !(dataFlag::GPU_DATA | dataFlag::GPU_HEIGHT | dataFlag::GPU_WIDTH);
     return m_leaveOnGPU = val;
 }
 
@@ -668,6 +672,9 @@ matrix<ItemType> matrix<ItemType>::add (matrix<ArgType>& M) {
         }
         if (!result.m_leaveOnGPU) {
             result.pullFromGPU (m_command_queue);
+        } else {
+            result.m_gpuUpToDate = true;
+            result.m_upToDate |= (dataFlag::GPU_DATA | dataFlag::GPU_HEIGHT | dataFlag::GPU_WIDTH);
         }
         clFinish (m_command_queue);
         if (queue_init) {
@@ -729,6 +736,9 @@ matrix<ItemType> matrix<ItemType>::add (const ArgType& val) {
         }
         if (!result.m_leaveOnGPU) {
             result.pullFromGPU (m_command_queue);
+        } else {
+            result.m_gpuUpToDate = true;
+            result.m_upToDate |= (dataFlag::GPU_DATA | dataFlag::GPU_HEIGHT | dataFlag::GPU_WIDTH);
         }
         clFinish (m_command_queue);
         if (queue_init) {
@@ -836,6 +846,9 @@ matrix<ItemType> matrix<ItemType>::subtract (matrix<ArgType>& M) {
         }
         if (!result.m_leaveOnGPU) {
             result.pullFromGPU (m_command_queue);
+        } else {
+            result.m_gpuUpToDate = true;
+            result.m_upToDate |= (dataFlag::GPU_DATA | dataFlag::GPU_HEIGHT | dataFlag::GPU_WIDTH);
         }
         clFinish (m_command_queue);
         if (queue_init) {
@@ -899,6 +912,9 @@ matrix<ItemType> matrix<ItemType>::subtract (const ArgType& val) {
         }
         if (!result.m_leaveOnGPU) {
             result.pullFromGPU (m_command_queue);
+        } else {
+            result.m_gpuUpToDate = true;
+            result.m_upToDate |= dataFlag::GPU_DATA;
         }
         clFinish (m_command_queue);
         if (queue_init) {
@@ -1014,6 +1030,9 @@ matrix<ItemType> matrix<ItemType>::multiply (matrix<ArgType>& M) {
         }
         if (!result.m_leaveOnGPU) {
             result.pullFromGPU (m_command_queue);
+        } else {
+            result.m_gpuUpToDate = true;
+            result.m_upToDate |= (dataFlag::GPU_DATA | dataFlag::GPU_HEIGHT | dataFlag::GPU_WIDTH);
         }
         clFinish (m_command_queue);
         if (queue_init) {
@@ -1077,6 +1096,9 @@ matrix<ItemType> matrix<ItemType>::multiply (const ArgType& val) {
         }
         if (!result.m_leaveOnGPU) {
             result.pullFromGPU (m_command_queue);
+        } else {
+            result.m_gpuUpToDate = true;
+            result.m_upToDate |= (dataFlag::GPU_DATA | dataFlag::GPU_HEIGHT | dataFlag::GPU_WIDTH);
         }
         clFinish (m_command_queue);
         if (queue_init) {
@@ -1159,6 +1181,9 @@ matrix<ItemType> matrix<ItemType>::elementMultiply (matrix<ArgType>& M) {
         }
         if (!result.m_leaveOnGPU) {
             result.pullFromGPU (m_command_queue);
+        } else {
+            result.m_gpuUpToDate = true;
+            result.m_upToDate |= (dataFlag::GPU_DATA | dataFlag::GPU_HEIGHT | dataFlag::GPU_WIDTH);
         }
         clFinish (m_command_queue);
         if (queue_init) {
@@ -1266,6 +1291,9 @@ matrix<ItemType> matrix<ItemType>::divide (const ArgType& val) {
         }
         if (!result.m_leaveOnGPU) {
             result.pullFromGPU (m_command_queue);
+        } else {
+            result.m_gpuUpToDate = true;
+            result.m_upToDate |= (dataFlag::GPU_DATA | dataFlag::GPU_HEIGHT | dataFlag::GPU_WIDTH);
         }
         clFinish (m_command_queue);
         if (queue_init) {
@@ -1347,6 +1375,9 @@ matrix<ItemType> matrix<ItemType>::elementDivide (matrix<ArgType>& M) {
         }
         if (!result.m_leaveOnGPU) {
             result.pullFromGPU (m_command_queue);
+        } else {
+            result.m_gpuUpToDate = true;
+            result.m_upToDate |= (dataFlag::GPU_DATA | dataFlag::GPU_HEIGHT | dataFlag::GPU_WIDTH);
         }
         clFinish (m_command_queue);
         if (queue_init) {
@@ -1455,34 +1486,32 @@ matrix<ItemType>& matrix<ItemType>::operator= (const matrix<ItemType>& M) {
         m_width = M.m_width;
     }
     if (GPU_INITIALIZED && (M.m_useGPU || ALL_USE_GPU) && (M.m_upToDate & dataFlag::GPU_DATA)) {
-        while (m_command_queue != NULL);
-        initQueue();
-        if (m_gpuData) {
-            clReleaseMemObject (m_gpuData);
+        if (!M.m_leaveOnGPU) {
+            //while (m_command_queue != NULL);
+            initQueue();
+            if (m_gpuData) {
+                clReleaseMemObject (m_gpuData);
+            }
+            if (m_gpuHeight) {
+                clReleaseMemObject (m_gpuHeight);
+            }
+            if (m_gpuWidth) {
+                clReleaseMemObject (m_gpuWidth);
+            }
+            m_gpuData = M.m_gpuData;
+            m_gpuHeight = M.m_gpuHeight;
+            m_gpuWidth = M.m_gpuWidth;
+            pullFromGPU (m_command_queue);
+            clFinish (m_command_queue);
+            clReleaseCommandQueue (m_command_queue);
+            m_command_queue = NULL;
+            m_gpuData = NULL;
+            m_gpuHeight = NULL;
+            m_gpuWidth = NULL;
+        } else {
+            //copy kernel
         }
-        if (m_gpuHeight) {
-            clReleaseMemObject (m_gpuHeight);
-        }
-        if (m_gpuWidth) {
-            clReleaseMemObject (m_gpuWidth);
-        }
-        m_gpuData = M.m_gpuData;
-        m_gpuHeight = M.m_gpuHeight;
-        m_gpuWidth = M.m_gpuWidth;
-        pullFromGPU (m_command_queue);
-        clFinish (m_command_queue);
-        clReleaseCommandQueue (m_command_queue);
-        m_command_queue = NULL;
-        m_gpuData = NULL;
-        m_gpuHeight = NULL;
-        m_gpuWidth = NULL;
     } else {
-        if (M.m_leaveOnGPU) {
-            m_leaveOnGPU = true;
-            M.initQueue();
-            M.pullFromGPU(M.m_command_queue);
-            clFinish(M.m_command_queue);
-        }
         for (size_t i = 0; i < m_height; i++) {
             for (size_t j = 0; j < m_width; j++) {
                 (*m_data[i])[j] = (*M.m_data[i])[j];
@@ -1514,10 +1543,7 @@ template <class ItemType>
 matrix<ItemType>& matrix<ItemType>::operator= (matrix<ItemType>&& M) {
     m_height = M.m_height;
     m_width = M.m_width;
-    m_data = M.m_data;
-    for (size_t i = 0; i < M.m_height; i++) {
-        M.m_data[i] = NULL;
-    }
+    m_data = std::move(M.m_data);
     m_gpuData = M.m_gpuData;
     M.m_gpuData = NULL;
     m_command_queue = M.m_command_queue;
@@ -1530,7 +1556,7 @@ matrix<ItemType>& matrix<ItemType>::operator= (matrix<ItemType>&& M) {
     m_useGPU = M.m_useGPU;
     m_leaveOnGPU = M.m_leaveOnGPU;
     m_gpuUpToDate = M.m_gpuUpToDate;
-    m_gpuSlicesUpToDate = M.m_gpuSlicesUpToDate;
+    m_gpuSlicesUpToDate = std::move(M.m_gpuSlicesUpToDate);
     return *this;
 }
 
@@ -1562,7 +1588,6 @@ matrix<ItemType>& matrix<ItemType>::operator= (const matrix<ArgType>& M) {
     }
     if (M.leaveDataOnGPU()) {
         m_leaveOnGPU = true;
-        M.pullData();
     }
     for (size_t i = 0; i < m_height; i++) {
         for (size_t j = 0; j < m_width; j++) {
@@ -1728,7 +1753,7 @@ cl_int matrix<ItemType>::pushToGPU (cl_command_queue& command_queue) {
     if (!m_gpuData) {
         m_gpuData = clCreateBuffer (m_context, CL_MEM_READ_WRITE, m_height * m_width * sizeof (ItemType), NULL, &ret);
         if (ret != CL_SUCCESS) {
-            printf ("6) Unable to create memory buffer, error code: %d\n", ret);
+            printf ("Unable to create memory buffer, error code: %d\n", ret);
             return ret;
         }
     }
@@ -1736,7 +1761,7 @@ cl_int matrix<ItemType>::pushToGPU (cl_command_queue& command_queue) {
     if (!m_gpuHeight) {
         m_gpuHeight = clCreateBuffer (m_context, CL_MEM_READ_ONLY, sizeof (ItemType), NULL, &ret);
         if (ret != CL_SUCCESS) {
-            printf ("5) Unable to create memory buffer, error code: %d\n", ret);
+            printf ("Unable to create memory buffer, error code: %d\n", ret);
             return ret;
         }
     }
@@ -1744,7 +1769,7 @@ cl_int matrix<ItemType>::pushToGPU (cl_command_queue& command_queue) {
     if (!m_gpuWidth) {
         m_gpuWidth = clCreateBuffer (m_context, CL_MEM_READ_ONLY, sizeof (ItemType), NULL, &ret);
         if (ret != CL_SUCCESS) {
-            printf ("4) Unable to create memory buffer, error code: %d\n", ret);
+            printf ("Unable to create memory buffer, error code: %d\n", ret);
             return ret;
         }
     }
@@ -1754,7 +1779,7 @@ cl_int matrix<ItemType>::pushToGPU (cl_command_queue& command_queue) {
             if (!m_gpuSlicesUpToDate[i]) {
                 ret = clEnqueueWriteBuffer (command_queue, m_gpuData, CL_TRUE, i * m_width * sizeof (ItemType), m_width * sizeof (ItemType), (*m_data[i]).data(), 0, NULL, NULL);
                 if (ret != CL_SUCCESS) {
-                    printf ("1) Unable to push data to GPU, error code: %d\n", ret);
+                    printf ("Unable to push data to GPU, error code: %d\n", ret);
                     return ret;
                 }
                 m_gpuSlicesUpToDate[i] = true;
@@ -1766,7 +1791,7 @@ cl_int matrix<ItemType>::pushToGPU (cl_command_queue& command_queue) {
     if (! (m_upToDate & dataFlag::GPU_HEIGHT)) {
         ret = clEnqueueWriteBuffer (command_queue, m_gpuHeight, CL_TRUE, 0, sizeof (ItemType), &m_height, 0, NULL, NULL);
         if (ret != CL_SUCCESS) {
-            printf ("2) Unable to push data to GPU, error code: %d\n", ret);
+            printf ("Unable to push data to GPU, error code: %d\n", ret);
             return ret;
         }
         m_upToDate |= dataFlag::GPU_HEIGHT;
@@ -1775,7 +1800,7 @@ cl_int matrix<ItemType>::pushToGPU (cl_command_queue& command_queue) {
     if (! (m_upToDate & dataFlag::GPU_WIDTH)) {
         ret = clEnqueueWriteBuffer (command_queue, m_gpuWidth, CL_TRUE, 0, sizeof (ItemType), &m_width, 0, NULL, NULL);
         if (ret != CL_SUCCESS) {
-            printf ("3) Unable to push data to GPU, error code: %d\n", ret);
+            printf ("Unable to push data to GPU, error code: %d\n", ret);
             return ret;
         }
         m_upToDate |= dataFlag::GPU_WIDTH;
