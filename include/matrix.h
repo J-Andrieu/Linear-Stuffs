@@ -31,6 +31,7 @@ public:
     //constructors
     matrix (const size_t& height, const size_t& width, const ItemType& val = ItemType(0), bool enable_gpu = false);
     matrix (const std::vector<std::vector<ItemType>>& vals, bool enable_gpu = false);
+    matrix (const ItemType** vals, const size_t& height, const size_t& width, bool enable_gpu = false);
     template <class ParamType>
     matrix (const matrix<ParamType>& M);
     matrix (const matrix<ItemType>& M);

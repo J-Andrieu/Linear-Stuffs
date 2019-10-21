@@ -69,6 +69,8 @@ int main (int argc, char* argv[]) {
             m2.set (j, i, (type) i + j);
         }
     }
+
+    LinAlgo::matrix<type> *out1, *out2, *out3;
     std::cout << "A small identity:" << std::endl;
     print_matrix<int> (LinAlgo::matrix<int>::identity (5));
     std::cout << std::endl;
@@ -79,8 +81,7 @@ int main (int argc, char* argv[]) {
     print_matrix<type> (m2);
     std::cout << std::endl;
     std::cout << "Transposed M1:" << std::endl;
-    LinAlgo::matrix<type> m1T (LinAlgo::transpose<type> (m1));
-    print_matrix<type> (m1T);
+    print_matrix<type> (LinAlgo::transpose<type> (m1));
     std::cout << std::endl;
     std::cout << "Row Echelon M1:" << std::endl;
     print_matrix<type> (LinAlgo::re (m1));
@@ -88,39 +89,46 @@ int main (int argc, char* argv[]) {
     std::cout << "Reduced Row Echelon M1:" << std::endl;
     print_matrix<type> (LinAlgo::rre (m1));
     std::cout << std::endl;
-    matrix<type> m1gj(HEIGHT, WIDTH + 1);
-    m1gj.copy(0, 0, m1);
+    out1 = new matrix<type>(HEIGHT, WIDTH + 1);
+    out1->copy(0, 0, m1);
     for (size_t i = 0; i < HEIGHT; i++) {
-        m1gj[i][WIDTH] = i + 1;
+        (*out1)[i][WIDTH] = i + 1;
     }
     std::cout << "Gauss-Jordan Elimination on M1 with solution vector (1, ..., " << HEIGHT << "):\nBefore:" << std::endl;
-    print_matrix<type> (m1gj);
+    print_matrix<type> (*out1);
     std::cout << "After:" << std::endl;
-    print_matrix<type> (LinAlgo::gj (m1gj));
+    out2 = new LinAlgo::matrix<type>(0, 0);
+    *out2 = LinAlgo::gj (*out1);
+    delete out1;
+    print_matrix<type> (*out2);
+    //print_matrix<type>(m1 * out->subMatrix(0, WIDTH, HEIGHT, 1));
     std::cout << std::endl;
     std::cout << "Gauss-Jordan Elimination on test linear system:" << std::endl;
-    LinAlgo::matrix<type> linsys ({
+    delete out2;
+    out1 = new LinAlgo::matrix<type>({
         {1, 2, 3, 4},
         {19, 22, 0, 6},
         {12, -14, 7, 3}
     });
     std::cout << "Original system: " << std::endl;
-    print_matrix<type> (linsys);
+    print_matrix<type> (*out1);
     std::cout << "Solved system: " << std::endl;
-    print_matrix<type> (LinAlgo::gj (linsys));
+    print_matrix<type> (LinAlgo::gj (*out1));
     std::cout << std::endl;
     std::cout << "Inverse of 2x2 matrix:" << std::endl;
-    LinAlgo::matrix<type> invert1 ({
+    delete out1;
+    out1 = new LinAlgo::matrix<type>({
         {1, 2},
         {3, 4}
     });
     std::cout << "Original matrix: " << std::endl;
-    print_matrix<type> (invert1);
+    print_matrix<type> (*out1);
     std::cout << "Inverted matrix: " << std::endl;
-    print_matrix<type> (LinAlgo::inverse (invert1));
+    print_matrix<type> (LinAlgo::inverse (*out1));
     std::cout << std::endl;
     std::cout << "Inverse of 5x5 matrix:" << std::endl;
-    LinAlgo::matrix<type> invert2 ({
+    delete out1;
+    out1 = new LinAlgo::matrix<type>({
         {1, 8, -9, 7, 5},
         {0, 1, 0, 4, 4},
         {0, 0, 1, 2, 5},
@@ -128,20 +136,21 @@ int main (int argc, char* argv[]) {
         {0, 0, 0, 0, 1}
     });
     std::cout << "Original matrix: " << std::endl;
-    print_matrix<type> (invert2);
+    print_matrix<type> (*out1);
     std::cout << "Inverted matrix: " << std::endl;
-    print_matrix<type> (LinAlgo::inverse (invert2));
+    print_matrix<type> (LinAlgo::inverse (*out1));
     std::cout << std::endl;
     std::cout << "Inverse of M1:" << std::endl;
     print_matrix<type> (LinAlgo::inverse (m1));
     std::cout << "The determinant of M1 is: " << m1.getDeterminant() << std::endl << std::endl;
-    LinAlgo::matrix<type> detMat({
-                                 {2, 1, 2},
-                                 {1, 1, 1},
-                                 {2, 2, 5}});
+    delete out1;
+    out1 = new LinAlgo::matrix<type>({
+                                     {2, 1, 2},
+                                     {1, 1, 1},
+                                     {2, 2, 5}});
     std::cout << "The determinant of the following matrix should be 3: " << std::endl;
-    print_matrix<type>(detMat);
-    std::cout << "Determinant is: " << detMat.getDeterminant() << std::endl << std::endl;
+    print_matrix<type>(*out1);
+    std::cout << "Determinant is: " << out1->getDeterminant() << std::endl << std::endl;
     std::cout << "Matrix division: \nNumerator:" << std::endl;
     //LinAlgo::matrix<type> numerator({
     //                                {1, 2, 3, 4, 5},
@@ -151,18 +160,27 @@ int main (int argc, char* argv[]) {
     //                                {1, 2, 3, 4, 5}
     //                                });
     //print_matrix<type>(numerator);
-    print_matrix<type>(invert2);
+    delete out1;
+    out1 = new LinAlgo::matrix<type>({
+        {1, 8, -9, 7, 5},
+        {0, 1, 0, 4, 4},
+        {0, 0, 1, 2, 5},
+        {0, 0, 0, 1, -5},
+        {0, 0, 0, 0, 1}
+    });
+    print_matrix<type>(*out1);
     std::cout << "Denominator: " << std::endl;
-    print_matrix<type>(invert2);
+    print_matrix<type>(*out1);
     std::cout << "Result: " << std::endl;
-    print_matrix(invert2.divide(invert2));
+    print_matrix(out1->divide(*out1));
     std::cout << std::endl;
-    LinAlgo::matrix<type> m1Sorted(m1);
-    std::sort(m1Sorted.begin(), m1Sorted.end(), [](auto a, auto b) {
+    delete out1;
+    out1 = new LinAlgo::matrix<type>(m1);
+    std::sort(out1->begin(), out1->end(), [](auto a, auto b) {
                 return a < b;
               });
     std::cout << "M1 sorted:" << std::endl;
-    print_matrix<type>(m1Sorted);
+    print_matrix<type>(*out1);
     std::cout << std::endl;
     //for (auto e : m1) {
     //    std::cout << e << '\t';
@@ -174,36 +192,41 @@ int main (int argc, char* argv[]) {
     //}
     //print_matrix<type>(m1Sorted);
     //std::cout << std::endl;
-    matrix<type> Q(0, 0), R(0, 0);
-    matrix<type> orthogMe({{1,-1, 0},
-                           {2, 0, 0},
-                           {2, 2, 1}});
-    qr(orthogMe, Q, R);
+    delete out1;
+    out1 = new LinAlgo::matrix<type>({{1,-1, 0},
+                                      {2, 0, 0},
+                                      {2, 2, 1}});
+    out2 = new LinAlgo::matrix<type>(0, 0);
+    out3 = new LinAlgo::matrix<type>(0, 0);
+    qr(*out1, *out2, *out3);
     std::cout << "Matrix before QR decomposition: " << std::endl;
-    print_matrix<type>(orthogMe);
+    print_matrix<type>(*out1);
     std::cout << std::endl;
     std::cout << "Q: " << std::endl;
-    print_matrix<type>(Q);
+    print_matrix<type>(*out2);
     std::cout << std::endl;
     std::cout << "R: " << std::endl;
-    print_matrix<type>(R);
+    print_matrix<type>(*out3);
     std::cout << std::endl;
     std::cout << "Q*R: " << std::endl;
-    print_matrix<type>(Q * R);
+    print_matrix<type>(*out2 * *out3);
     std::cout << std::endl;
-    qr(m1, Q, R);
+    delete out1;
+    qr(m1, *out2, *out3);
     std::cout << "Matrix before QR decomposition: " << std::endl;
     print_matrix<type>(m1);
     std::cout << std::endl;
     std::cout << "Q: " << std::endl;
-    print_matrix<type>(Q);
+    print_matrix<type>(*out2);
     std::cout << std::endl;
     std::cout << "R: " << std::endl;
-    print_matrix<type>(R);
+    print_matrix<type>(*out3);
     std::cout << std::endl;
     std::cout << "Q*R: " << std::endl;
-    print_matrix<type>(Q * R);
+    print_matrix<type>(*out2 * *out3);
     std::cout << std::endl;
+    delete out2;
+    delete out3;
 
     m1.useGPU (true);
     m2.useGPU (true);
@@ -255,13 +278,17 @@ int main (int argc, char* argv[]) {
     m1 = m1.subMatrix(0, 0, m1.getHeight() < m1.getWidth() ? m1.getHeight() : m1.getWidth(), m1.getHeight() < m1.getWidth() ? m1.getHeight() : m1.getWidth());
     m1.leaveDataOnGPU(true);
     m1.useGPU(true);
-    LinAlgo::matrix<type> id = LinAlgo::identityMatrix<type>(m1.getHeight());
-    id.leaveDataOnGPU(true);
-    id.useGPU(true);
+    out1 = new LinAlgo::matrix<type>(0, 0);
+    *out1 = LinAlgo::matrix<type>::identity(m1.getHeight());
+    out1->leaveDataOnGPU(true);
+    out1->useGPU(true);
     t.start();
-    id = id * id * id * id * m1;
+    for (int i = 0; i < 4; i++) {
+        *out1 = *out1 * *out1;
+    }
+    *out1 = *out1 * m1;
     long long int t7 = t.getMicrosecondsElapsed();
-    id.pullData();
+    out1->pullData();
 
     std::cout << "Microseconds for addition with GPU: " << t1 << std::endl;
     std::cout << "Microseconds for subtraction with GPU: " << t5 << std::endl;
@@ -274,6 +301,10 @@ int main (int argc, char* argv[]) {
     std::cout << "\nMicroseconds required to execute 5 chained multiplications of m1 with identity matrices" << std::endl;
     std::cout << "with leaveDataOnGPU active: " << t7 << std::endl;
     std::cout << std::endl;
+
+    print_matrix<type>(*out1);
+    std::cout << std::endl;
+    delete out1;
 
     bool accuracy = true;
     bool overall_accuracy = true;
@@ -316,6 +347,9 @@ int main (int argc, char* argv[]) {
 
     LinAlgo::BreakDownGPU();
 
+    //Timers::setLogFile("log.txt");
+    //Timers::logNamedTimers();
+
     return 0;
 }
 
@@ -324,7 +358,7 @@ void print_matrix (const LinAlgo::matrix<ItemType>& M, int padding) {
     if (M.getWidth() == 0) {
         std::cout << "Null matrix" << std::endl;
     }
-    if (M.getWidth() <= 20) {
+    if (M.getWidth() <= 15) {
         std::string fstring = std::string("% ") + std::to_string(padding) + std::string("s");
         for (int i = 0; i < M.getHeight(); i++) {
             for (int j = 0; j < M.getWidth(); j++) {
@@ -353,6 +387,8 @@ void print_matrix (const LinAlgo::matrix<ItemType>& M, int padding) {
             }
             std::cout << std::endl;
         }
+    } else {
+        std::cout << "Too Large" << std::endl;
     }
 }
 

@@ -11,14 +11,36 @@
 #define TIMER_H
 
 #include <chrono>
+#include <ctime>
+#include <vector>
+#include <string>
+#include <iostream>
+#include <fstream>
+#include <iomanip>
 
 typedef std::chrono::high_resolution_clock hresClock;
 typedef hresClock::time_point hresClockTimePoint;
+
+namespace Timers {
+    void logNamedTimers();
+    void setLogFile(std::string);
+
+    typedef struct {
+        std::string m_scopeName;
+        long long* m_executionTime;
+    } timerScope;
+
+    static std::vector<timerScope> named_timers;
+    static std::string out_file = "";
+}
 
 class Timer {
 public:
     //class constructor
     Timer();
+    Timer(long long& out);//scope resolution timer
+    Timer(std::string scopeName);//named scope resolution timer
+    ~Timer();
 
     //retrieve relative time
     void start(); //sets internal time point
@@ -34,7 +56,9 @@ public:
 
 private:
     hresClockTimePoint m_initialTime;
+    long long* m_out;
 };
+
 
 #endif
 
