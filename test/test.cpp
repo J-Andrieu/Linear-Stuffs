@@ -19,7 +19,6 @@
 #include "Timer/include/Timer.h"
 #include "CMDParser/include/CMDParser.h"
 
-//less than 25x25 causes bsod with the destructor uncommented for some reason
 int HEIGHT = 15;
 int WIDTH = 15;
 typedef float type;
@@ -34,20 +33,58 @@ std::tuple<size_t, size_t> getDimensions (matrix<type> &M) {
     return {M.getHeight(), M.getWidth()};
 }
 
+typedef struct {
+    int dimensions[2];
+    bool accuracy_test;
+    bool speed_test;
+    bool operator_test;
+    bool methods_test;
+    bool matrix_test;
+    bool all;
+    std::string log_file;
+} parameters;
+
+bool validateParameters(parameters& params);//will set defaults if necessary
+
 /*MATRIX TESTING*/
 int main (int argc, char* argv[]) {
+    parameters params;
+    params.dimensions[0] = 0;
+    params.dimensions[1] = 0;
+    params.accuracy_test = false;
+    params.speed_test = false;
+    params.operator_test = false;
+    params.methods_test = false;
+    params.matrix_test = false;
+    params.all = false;
+    params.log_file = "";
 
-    if (argc > 1) {
-        try {
-            HEIGHT = std::stoi (argv[1]);
-            if (argc > 2) {
-                WIDTH = std::stoi (argv[2]);
-            } else {
-                WIDTH = HEIGHT;
-            }
-        } catch (...) {
-            std::cout << "accepted usage: matrix_test <height <width>>" << std::endl;
-            return -1;
+    CMDParser parser;
+    parser.bindVar<int[2]>("-d", params.dimensions, 2, "Defines the dimensions of matrices for certain tests");
+    parser.bindVar<bool>("-accuracy", params.accuracy_test, 0, "Tests the accuracy of matrix operations with known results");
+    parser.bindVar<bool>("-speed", params.speed_test, 0, "Tests the speed of matrix operations on and off the GPU");
+    parser.bindVar<bool>("-operators", params.operator_test, 0, "Tests vector and matrix operator overloads");
+    parser.bindVar<bool>("-methods", params.methods_test, 0, "Tests methods and procedures against know outcomes");
+    parser.bindVar<bool>("-matrix", params.matrix_test, 0, "IDK man, as i need types of tests i'll add them :P");
+    parser.bindVar<bool>("-a", params.all, 0, "Run all test");
+    parser.bindVar<std::string>("", params.log_file, 1, "Sets the location to log test results");
+    parser.parse(argc, argv);
+
+
+    if (params.dimensions[0] == 0) {
+        if (params.dimensions[1] == 0) {
+            HEIGHT = 15;
+            WIDTH = 15;
+        } else {
+            HEIGHT = params.dimensions[1];
+            WIDTH = params.dimensions[1];
+        }
+    } else {
+        HEIGHT = params.dimensions[0];
+        if (params.dimensions[1] == 0) {
+            WIDTH = HEIGHT;
+        } else {
+            WIDTH = params.dimensions[1];
         }
     }
 
