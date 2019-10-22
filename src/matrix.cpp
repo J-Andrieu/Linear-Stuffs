@@ -280,6 +280,9 @@ matrix<ItemType>::~matrix() {
         clReleaseMemObject(m_gpuWidth);
     }
 #endif
+    for (auto i = m_data.begin(); i < m_data.end(); i++) {
+        delete *i;
+    }
 }
 //}
 // </editor-fold>
