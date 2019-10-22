@@ -240,10 +240,7 @@ matrix<ItemType>::matrix (matrix<ItemType>&& M) : m_useGPU (M.m_useGPU), m_gpuUp
     m_gpuSlicesUpToDate (M.m_gpuSlicesUpToDate), m_leaveOnGPU (M.m_leaveOnGPU) {
     m_height = M.m_height;
     m_width = M.m_width;
-    m_data = M.m_data;
-    for (size_t i = 0; i < M.m_height; i++) {
-        M.m_data[i] = NULL;
-    }
+    m_data = std::move(M.m_data);
     M.m_gpuData = NULL;
     M.m_command_queue = NULL;
     M.m_gpuHeight = NULL;
@@ -255,9 +252,6 @@ matrix<ItemType>::matrix (matrix<ItemType>&& M) {
     m_height = M.m_height;
     m_width = M.m_width;
     m_data = std::move(M.m_data);
-    for (size_t i = 0; i < M.m_height; i++) {
-        M.m_data[i] = NULL;
-    }
 }
 #endif
 

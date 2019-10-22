@@ -477,6 +477,7 @@ LinAlgo::matrix<ItemType> LinAlgo::inverse (matrix<ItemType>& M) { //would be co
             return matrix<ItemType> (0, 0);
         }
         matrix<ItemType> augmented (M.m_height, M.m_width * 2);
+        printf("it made the matrix\n");
 #ifndef DONT_USE_GPU
         augmented.useGPU(M.useGPU());
 #endif
@@ -486,6 +487,7 @@ LinAlgo::matrix<ItemType> LinAlgo::inverse (matrix<ItemType>& M) { //would be co
                 (*augmented.m_data[i])[j] = (*M.m_data[i])[j];
             }
         }
+        printf("it filled the matrix");
         //augmented.gj();
         return gj (augmented).subMatrix (0, M.m_width, M.m_height, M.m_width);
     }

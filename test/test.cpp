@@ -6,8 +6,6 @@
 * @notes Requires matrix.h and Timer.h
 */
 
-#define DONT_USE_GPU
-
 #include <cstdlib>
 #include <iostream>
 #include <fstream>
@@ -33,7 +31,7 @@ template <class ItemType>
 std::tuple<size_t, size_t, ItemType, ItemType> locateError(const LinAlgo::matrix<ItemType>& M1, const LinAlgo::matrix<ItemType>& M2);
 #endif
 std::tuple<size_t, size_t> getDimensions (matrix<type> &M) {
-    return {M.getHeight(), M.getWidth()};
+    return std::tuple<size_t, size_t>(M.getHeight(), M.getWidth());
 }
 
 typedef struct {
@@ -100,7 +98,9 @@ int main (int argc, char* argv[]) {
     Timer t;
 
     LinAlgo::matrix<type>* m1  = new LinAlgo::matrix<type>(HEIGHT, WIDTH);
-    auto[height, width] = getDimensions (*m1);
+    //auto[height, width] = getDimensions (*m1);
+    size_t height, width;
+    std::tie(height, width) = getDimensions(*m1);
     std::cout << "The dimensions of m1 are height: " << height << ", width: " << width << std::endl;
     LinAlgo::matrix<type>* m2  = new LinAlgo::matrix<type>(HEIGHT, WIDTH);
     //LinAlgo::AllUseGPU(true);
@@ -353,8 +353,8 @@ int main (int argc, char* argv[]) {
 
     print_matrix<type>(*out1);
     std::cout << std::endl;
-#endif
     delete out1;
+#endif
 
 #ifndef DONT_USE_GPU
     bool accuracy = true;
