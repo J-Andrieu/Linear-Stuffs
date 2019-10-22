@@ -1,0 +1,3 @@
+[submodule "test/CMDParser"]
+	path = test/CMDParser
+	url = https://github.com/J-Andrieu/CMDParser

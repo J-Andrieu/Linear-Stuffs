@@ -16,7 +16,8 @@
 #include <climits>
 
 #include "../include/LinAlgo.hpp"
-#include "../include/Timer.h"
+#include "Timer/include/Timer.h"
+#include "CMDParser/include/CMDParser.h"
 
 //less than 25x25 causes bsod with the destructor uncommented for some reason
 int HEIGHT = 15;
@@ -56,17 +57,17 @@ int main (int argc, char* argv[]) {
 
     Timer t;
 
-    LinAlgo::matrix<type> m1 (HEIGHT, WIDTH);
-    auto[height, width] = getDimensions (m1);
+    LinAlgo::matrix<type>* m1  = new LinAlgo::matrix<type>(HEIGHT, WIDTH);
+    auto[height, width] = getDimensions (*m1);
     std::cout << "The dimensions of m1 are height: " << height << ", width: " << width << std::endl;
-    LinAlgo::matrix<type> m2 (WIDTH, HEIGHT);
+    LinAlgo::matrix<type>* m2  = new LinAlgo::matrix<type>(HEIGHT, WIDTH);
     //LinAlgo::AllUseGPU(true);
 
     for (size_t i = 0; i < HEIGHT; i++) {
         for (size_t j = 0; j < WIDTH; j++) {
             type val1 = (std::pow((type) i, j) - j) / WIDTH;
-            m1.set (i, j, (type) val1 < SHRT_MAX ? (val1 > UCHAR_MAX ? val1 / UCHAR_MAX : val1) : (int) val1 % UCHAR_MAX);
-            m2.set (j, i, (type) i + j);
+            m1->set (i, j, (type) val1 < SHRT_MAX ? (val1 > UCHAR_MAX ? val1 / UCHAR_MAX : val1) : (int) val1 % UCHAR_MAX);
+            m2->set (j, i, (type) i + j);
         }
     }
 
@@ -75,22 +76,22 @@ int main (int argc, char* argv[]) {
     print_matrix<int> (LinAlgo::matrix<int>::identity (5));
     std::cout << std::endl;
     std::cout << "M1:" << std::endl;
-    print_matrix<type> (m1);
+    print_matrix<type> (*m1);
     std::cout << std::endl;
     std::cout << "M2:" << std::endl;
-    print_matrix<type> (m2);
+    print_matrix<type> (*m2);
     std::cout << std::endl;
     std::cout << "Transposed M1:" << std::endl;
-    print_matrix<type> (LinAlgo::transpose<type> (m1));
+    print_matrix<type> (LinAlgo::transpose<type> (*m1));
     std::cout << std::endl;
     std::cout << "Row Echelon M1:" << std::endl;
-    print_matrix<type> (LinAlgo::re (m1));
+    print_matrix<type> (LinAlgo::re (*m1));
     std::cout << std::endl;
     std::cout << "Reduced Row Echelon M1:" << std::endl;
-    print_matrix<type> (LinAlgo::rre (m1));
+    print_matrix<type> (LinAlgo::rre (*m1));
     std::cout << std::endl;
     out1 = new matrix<type>(HEIGHT, WIDTH + 1);
-    out1->copy(0, 0, m1);
+    out1->copy(0, 0, *m1);
     for (size_t i = 0; i < HEIGHT; i++) {
         (*out1)[i][WIDTH] = i + 1;
     }
@@ -141,8 +142,8 @@ int main (int argc, char* argv[]) {
     print_matrix<type> (LinAlgo::inverse (*out1));
     std::cout << std::endl;
     std::cout << "Inverse of M1:" << std::endl;
-    print_matrix<type> (LinAlgo::inverse (m1));
-    std::cout << "The determinant of M1 is: " << m1.getDeterminant() << std::endl << std::endl;
+    print_matrix<type> (LinAlgo::inverse (*m1));
+    std::cout << "The determinant of M1 is: " << m1->getDeterminant() << std::endl << std::endl;
     delete out1;
     out1 = new LinAlgo::matrix<type>({
                                      {2, 1, 2},
@@ -175,7 +176,7 @@ int main (int argc, char* argv[]) {
     print_matrix(out1->divide(*out1));
     std::cout << std::endl;
     delete out1;
-    out1 = new LinAlgo::matrix<type>(m1);
+    out1 = new LinAlgo::matrix<type>(*m1);
     std::sort(out1->begin(), out1->end(), [](auto a, auto b) {
                 return a < b;
               });
@@ -212,9 +213,9 @@ int main (int argc, char* argv[]) {
     print_matrix<type>(*out2 * *out3);
     std::cout << std::endl;
     delete out1;
-    qr(m1, *out2, *out3);
+    qr(*m1, *out2, *out3);
     std::cout << "Matrix before QR decomposition: " << std::endl;
-    print_matrix<type>(m1);
+    print_matrix<type>(*m1);
     std::cout << std::endl;
     std::cout << "Q: " << std::endl;
     print_matrix<type>(*out2);
@@ -228,16 +229,16 @@ int main (int argc, char* argv[]) {
     delete out2;
     delete out3;
 
-    m1.useGPU (true);
-    m2.useGPU (true);
+    m1->useGPU (true);
+    m2->useGPU (true);
     t.start();
-    LinAlgo::matrix<type> m3 = m1.add (m2);
+    LinAlgo::matrix<type> m3 = m1->add (*m2);
     long long int t1 = t.getMicrosecondsElapsed();
     t.start();
-    LinAlgo::matrix<type> m4 = m1.multiply (m2);
+    LinAlgo::matrix<type> m4 = m1->multiply (*m2);
     long long int t2 = t.getMicrosecondsElapsed();
     t.start();
-    LinAlgo::matrix<type> m7 = m1.subtract (m2);
+    LinAlgo::matrix<type> m7 = m1->subtract (*m2);
     long long int t5 = t.getMicrosecondsElapsed();
 
     std::cout << "Using the GPU:" << std::endl;
@@ -252,16 +253,16 @@ int main (int argc, char* argv[]) {
     std::cout << std::endl;
 
     //LinAlgo::AllUseGPU(false);
-    m1.useGPU (false);
-    m2.useGPU (false);
+    m1->useGPU (false);
+    m2->useGPU (false);
     t.start();
-    LinAlgo::matrix<type> m5 = m1.add (m2);
+    LinAlgo::matrix<type> m5 = m1->add (*m2);
     long long int t3 = t.getMicrosecondsElapsed();
     t.start();
-    LinAlgo::matrix<type> m6 = m1.multiply (m2);
+    LinAlgo::matrix<type> m6 = m1->multiply (*m2);
     long long int t4 = t.getMicrosecondsElapsed();
     t.start();
-    LinAlgo::matrix<type> m8 = m1 - m2;
+    LinAlgo::matrix<type> m8 = *m1 - *m2;
     long long int t6 = t.getMicrosecondsElapsed();
 
     std::cout << "Using the CPU:" << std::endl;
@@ -275,18 +276,18 @@ int main (int argc, char* argv[]) {
     print_matrix<type> (m6);
     std::cout << std::endl;
 
-    m1 = m1.subMatrix(0, 0, m1.getHeight() < m1.getWidth() ? m1.getHeight() : m1.getWidth(), m1.getHeight() < m1.getWidth() ? m1.getHeight() : m1.getWidth());
-    m1.leaveDataOnGPU(true);
-    m1.useGPU(true);
+    *m1 = m1->subMatrix(0, 0, m1->getHeight() < m1->getWidth() ? m1->getHeight() : m1->getWidth(), m1->getHeight() < m1->getWidth() ? m1->getHeight() : m1->getWidth());
+    m1->leaveDataOnGPU(true);
+    m1->useGPU(true);
     out1 = new LinAlgo::matrix<type>(0, 0);
-    *out1 = LinAlgo::matrix<type>::identity(m1.getHeight());
+    *out1 = LinAlgo::matrix<type>::identity(m1->getHeight());
     out1->leaveDataOnGPU(true);
     out1->useGPU(true);
     t.start();
     for (int i = 0; i < 4; i++) {
         *out1 = *out1 * *out1;
     }
-    *out1 = *out1 * m1;
+    *out1 = *out1 * *m1;
     long long int t7 = t.getMicrosecondsElapsed();
     out1->pullData();
 
@@ -345,6 +346,9 @@ int main (int argc, char* argv[]) {
         //std::cout << "Also, Location (0, 0) with values 0, and 0 mean that the error could not be located a second time." << std::endl;
     }
     std::cout << std::endl;
+
+    delete m1;
+    delete m2;
 
     LinAlgo::BreakDownGPU();
 
