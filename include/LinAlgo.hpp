@@ -523,6 +523,7 @@ bool LinAlgo::qr (const LinAlgo::matrix<ItemType>& M, matrix<ItemType>& Q, matri
             }
         }
     }
+
     return true;
 }
 

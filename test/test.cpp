@@ -252,6 +252,10 @@ int main (int argc, char* argv[]) {
     print_matrix<type>(*out3);
     std::cout << std::endl;
     std::cout << "Q*R: " << std::endl;
+    delete out2;
+    delete out3;
+    out2 = new LinAlgo::matrix<type>(0, 0);
+    out3 = new LinAlgo::matrix<type>(0, 0);
     print_matrix<type>(*out2 * *out3);
     std::cout << std::endl;
     delete out1;
