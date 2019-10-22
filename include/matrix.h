@@ -29,9 +29,15 @@ template <class ItemType = double>
 class LinAlgo::matrix {
 public:
     //constructors
+#ifndef DONT_USE_GPU
     matrix (const size_t& height, const size_t& width, const ItemType& val = ItemType(0), bool enable_gpu = false);
     matrix (const std::vector<std::vector<ItemType>>& vals, bool enable_gpu = false);
     matrix (const ItemType** vals, const size_t& height, const size_t& width, bool enable_gpu = false);
+#else
+    matrix (const size_t& height, const size_t& width, const ItemType& val = ItemType(0));
+    matrix (const std::vector<std::vector<ItemType>>& vals);
+    matrix (const ItemType** vals, const size_t& height, const size_t& width);
+#endif
     template <class ParamType>
     matrix (const matrix<ParamType>& M);
     matrix (const matrix<ItemType>& M);
@@ -43,12 +49,14 @@ public:
     //initializers
     void fill (ItemType val);
     void clear();
+#ifndef DONT_USE_GPU
     bool useGPU (bool);
     bool useGPU() const;
     bool leaveDataOnGPU (bool); //don't pull data for chained operations
     bool leaveDataOnGPU () const; //will return if the data is being left on the GPU
     bool pushData();//manually move data to and from the CPU
     bool pullData();
+#endif
 
     //setters and getters
     ItemType get (size_t y, size_t x) const;
@@ -109,11 +117,13 @@ public:
     template <class ArgType>
     matrix<ArgType> map (ArgType (*function) (ItemType)); //map a function via the cpu
     //I don't think I can actually template the gpu maps... we'll cross that bridge later
+#ifndef DONT_USE_GPU
     template <class ArgType>
     matrix<ArgType> mapGPU (std::string kernel, cl_int& error_code); //this function will compile and run a kernel that acts on a single array pointer... be careful
     template <class ArgType>
     matrix<ArgType> mapGPU (cl_kernel kernel, cl_int& error_code);
     //should this take another one that's just a fully compiled and such kernel? probably
+#endif
 
     bool qr (matrix<ItemType>& Q, matrix<ItemType>& R); //returns if it was successful
 
@@ -178,12 +188,14 @@ public:
 
     template <class ArgType1, class ArgType2>
     friend matrix<ArgType1> LinAlgo::map (const matrix<ArgType2>& M, ArgType1 (*function) (ArgType2));
+#ifndef DONT_USE_GPU
     //due to updating gpu data counting as cahnging the matrix, I can't
     //actually have these be const :'(
     template <class ArgType>
     friend matrix<ArgType> LinAlgo::map (const matrix<ArgType>& M, std::string kernel, cl_int& error_ret);
     template <class ArgType>
     friend matrix<ArgType> LinAlgo::map (const matrix<ArgType>& M, cl_kernel kernel, cl_int& error_ret);
+#endif
 
     template <class ArgType>
     friend bool LinAlgo::qr (const matrix<ArgType>& M, matrix<ArgType>& Q, matrix<ArgType>& R);
@@ -344,8 +356,10 @@ private:
     ItemType m_determinant;
     std::vector<ItemType> m_eigenValues;//another for vectors?
 
+#ifndef DONT_USE_GPU
 //are things up to date?
     bool m_gpuUpToDate;//this may grow to be a pain to manage later... and it may be better to track the validity of individual bits of data/rows/etc so that whole matrices down't get pushed each time
+#endif
     typedef enum {
         GPU_DATA = 1 << 0,
         GPU_HEIGHT = 1 << 1,
@@ -354,6 +368,7 @@ private:
         EIGENVALUES = 1 << 4 //things that rely on other things being up to date will need to be unticked an unallocated when other data goes out of date
     } dataFlag;
     unsigned char m_upToDate;//use the data flags to mark what is currently up to date
+#ifndef DONT_USE_GPU
     std::vector<bool> m_gpuSlicesUpToDate;//vector m_height in size, true if that slice is up to date, false if a change occured
 
 //gpu things
@@ -377,6 +392,7 @@ private:
     cl_int execute_add_kernel (cl_kernel kernel, matrix<ItemType>& rhs, matrix<ItemType>& result); //so far these two functions are basically exactly the same...
     cl_int execute_multiply_kernel (cl_kernel kernel, matrix<ItemType>& rhs, matrix<ItemType>& result); //they'll change if the kernel params do, but rn....
     cl_int execute_array_val_kernel (cl_kernel kernel, ItemType& val, matrix<ItemType>& result);
+#endif
 };
 
 #include "../src/matrix.cpp"

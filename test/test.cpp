@@ -6,6 +6,8 @@
 * @notes Requires matrix.h and Timer.h
 */
 
+#define DONT_USE_GPU
+
 #include <cstdlib>
 #include <iostream>
 #include <fstream>
@@ -25,10 +27,11 @@ typedef float type;
 
 template <class ItemType>
 void print_matrix (const LinAlgo::matrix<ItemType>& M, int padding = -10);
+#ifndef DONT_USE_GPU
 void checkReturn (cl_int ret);
 template <class ItemType>
 std::tuple<size_t, size_t, ItemType, ItemType> locateError(const LinAlgo::matrix<ItemType>& M1, const LinAlgo::matrix<ItemType>& M2);
-
+#endif
 std::tuple<size_t, size_t> getDimensions (matrix<type> &M) {
     return {M.getHeight(), M.getWidth()};
 }
@@ -88,9 +91,11 @@ int main (int argc, char* argv[]) {
         }
     }
 
+#ifndef DONT_USE_GPU
     checkReturn (LinAlgo::InitGPU());
 
     std::cout << (LinAlgo::IsGPUInitialized() ? "The GPU is initialized" : "The GPU is not initialized") << std::endl;
+#endif // DONT_USE_GPU
 
     Timer t;
 
@@ -266,6 +271,7 @@ int main (int argc, char* argv[]) {
     delete out2;
     delete out3;
 
+#ifndef DONT_USE_GPU
     m1->useGPU (true);
     m2->useGPU (true);
     t.start();
@@ -292,6 +298,7 @@ int main (int argc, char* argv[]) {
     //LinAlgo::AllUseGPU(false);
     m1->useGPU (false);
     m2->useGPU (false);
+#endif
     t.start();
     LinAlgo::matrix<type> m5 = m1->add (*m2);
     long long int t3 = t.getMicrosecondsElapsed();
@@ -313,6 +320,7 @@ int main (int argc, char* argv[]) {
     print_matrix<type> (m6);
     std::cout << std::endl;
 
+#ifndef DONT_USE_GPU
     *m1 = m1->subMatrix(0, 0, m1->getHeight() < m1->getWidth() ? m1->getHeight() : m1->getWidth(), m1->getHeight() < m1->getWidth() ? m1->getHeight() : m1->getWidth());
     m1->leaveDataOnGPU(true);
     m1->useGPU(true);
@@ -332,19 +340,23 @@ int main (int argc, char* argv[]) {
     std::cout << "Microseconds for addition with GPU: " << t1 << std::endl;
     std::cout << "Microseconds for subtraction with GPU: " << t5 << std::endl;
     std::cout << "Microseconds for multiplication with GPU: " << t2 << std::endl;
+#endif
 
     std::cout << "Microseconds for addition with CPU: " << t3 << std::endl;
     std::cout << "Microseconds for subtraction with CPU: " << t6 << std::endl;
     std::cout << "Microseconds for multiplication with CPU: " << t4 << std::endl;
 
+#ifndef DONT_USE_GPU
     std::cout << "\nMicroseconds required to execute 5 chained multiplications of m1 with identity matrices" << std::endl;
     std::cout << "with leaveDataOnGPU active: " << t7 << std::endl;
     std::cout << std::endl;
 
     print_matrix<type>(*out1);
     std::cout << std::endl;
+#endif
     delete out1;
 
+#ifndef DONT_USE_GPU
     bool accuracy = true;
     bool overall_accuracy = true;
     size_t locX, locY;
@@ -383,11 +395,14 @@ int main (int argc, char* argv[]) {
         //std::cout << "Also, Location (0, 0) with values 0, and 0 mean that the error could not be located a second time." << std::endl;
     }
     std::cout << std::endl;
+#endif
 
     delete m1;
     delete m2;
 
+#ifndef DONT_USE_GPU
     LinAlgo::BreakDownGPU();
+#endif
 
     //Timers::setLogFile("log.txt");
     //Timers::logNamedTimers();
@@ -434,6 +449,7 @@ void print_matrix (const LinAlgo::matrix<ItemType>& M, int padding) {
     }
 }
 
+#ifndef DONT_USE_GPU
 const char* getErrorString (cl_int error) {
     switch (error) {
         // run-time and JIT compiler errors
@@ -592,3 +608,4 @@ std::tuple<size_t, size_t, ItemType, ItemType> locateError(const LinAlgo::matrix
     }
     return {0, 0, 0, 0};
 }
+#endif

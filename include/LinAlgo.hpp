@@ -15,11 +15,13 @@
 #include <type_traits>
 #include <cassert>
 
+#ifndef DONT_USE_GPU
 #define CL_USE_DEPRECATED_OPENCL_1_2_APIS //just in case somone has OpenCL 1.2
 #ifdef _WIN32
 #include <CL\cl.h>
 #else
 #include <CL/cl.h>
+#endif
 #endif
 
 /**
@@ -56,12 +58,14 @@ namespace LinAlgo {
 
     template <class ArgType, class ItemType = ArgType>
     matrix<ArgType> map (const matrix<ItemType>& M, ArgType (*function) (ItemType));
+#ifndef DONT_USE_GPU
 //due to updating gpu data counting as cahnging the matrix, I can't
 //actually have these be const :'(
     template <class ItemType>
     matrix<ItemType> map (const matrix<ItemType>& M, std::string kernel, cl_int& error_ret);
     template <class ItemType>
     matrix<ItemType> map (const matrix<ItemType>& M, cl_kernel kernel, cl_int& error_ret);
+#endif
 
 
     template <class ItemType>
@@ -97,6 +101,7 @@ namespace LinAlgo {
     template <class ItemType, class FuncRet>
     std::vector<ItemType> gs(const std::vector<ItemType>& vals, FuncRet(*innerProduct)(const ItemType&, const ItemType&) = [](const ItemType& A, const ItemType& B) {return A * B;}, bool normaliz_output = true);//gram-schmidt process on a set of (vectors)
 
+#ifndef DONT_USE_GPU
 //functions and such for dealing with the gpu
     static cl_int InitGPU();
     static bool BreakDownGPU();
@@ -206,8 +211,10 @@ namespace LinAlgo {
         cl_device_id m_device_id = NULL;
         cl_context m_context = NULL;
     }
+#endif
 }
 
+#ifndef DONT_USE_GPU
 #pragma region GPU Functions
 // <editor-fold desc="GPU Functions">
 /**
@@ -388,6 +395,7 @@ static bool LinAlgo::IsGPUInitialized() {
 }
 // </editor-fold>
 #pragma endregion
+#endif
 
 #include "matrix.h"
 
@@ -468,7 +476,10 @@ LinAlgo::matrix<ItemType> LinAlgo::inverse (matrix<ItemType>& M) { //would be co
             //printf ("The determinant was 0\n");
             return matrix<ItemType> (0, 0);
         }
-        matrix<ItemType> augmented (M.m_height, M.m_width * 2, 0, M.m_useGPU);
+        matrix<ItemType> augmented (M.m_height, M.m_width * 2);
+#ifndef DONT_USE_GPU
+        augmented.useGPU(M.useGPU());
+#endif
         for (size_t i = 0; i < augmented.m_height; i++) {
             (*augmented.m_data[i])[i + M.m_width] = 1;
             for (size_t j = 0; j < M.m_width; j++) {
