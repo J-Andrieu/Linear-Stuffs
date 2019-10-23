@@ -68,7 +68,7 @@ int main (int argc, char* argv[]) {
     parser.bindVar<bool>("-methods", params.methods_test, 0, "Tests methods and procedures against know outcomes");
     parser.bindVar<bool>("-matrix", params.matrix_test, 0, "IDK man, as i need types of tests i'll add them :P");
     parser.bindVar<bool>("-a", params.all, 0, "Run all test");
-    parser.bindVar<std::string>("", params.log_file, 1, "Sets the location to log test results");
+    parser.bindVar<std::string>("-log", params.log_file, 1, "Sets the location to log test results");
     if (!parser.parse(argc, argv)) {
       return -1;
     }
