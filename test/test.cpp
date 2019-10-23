@@ -69,7 +69,9 @@ int main (int argc, char* argv[]) {
     parser.bindVar<bool>("-matrix", params.matrix_test, 0, "IDK man, as i need types of tests i'll add them :P");
     parser.bindVar<bool>("-a", params.all, 0, "Run all test");
     parser.bindVar<std::string>("", params.log_file, 1, "Sets the location to log test results");
-    parser.parse(argc, argv);
+    if (!parser.parse(argc, argv)) {
+      return -1;
+    }
 
 
     if (params.dimensions[0] == 0) {
@@ -102,7 +104,7 @@ int main (int argc, char* argv[]) {
     size_t height, width;
     std::tie(height, width) = getDimensions(*m1);
     std::cout << "The dimensions of m1 are height: " << height << ", width: " << width << std::endl;
-    LinAlgo::matrix<type>* m2  = new LinAlgo::matrix<type>(HEIGHT, WIDTH);
+    LinAlgo::matrix<type>* m2  = new LinAlgo::matrix<type>(WIDTH, HEIGHT);
     //LinAlgo::AllUseGPU(true);
 
     for (size_t i = 0; i < HEIGHT; i++) {
