@@ -33,7 +33,7 @@ matrix<ItemType>::matrix (const size_t& height, const size_t& width, const ItemT
     m_gpuWidth (NULL), m_command_queue (NULL), m_gpuSlicesUpToDate (height, false) {
     m_data.resize (m_height);
     for (size_t i = 0; i < m_height; i++) {
-        m_data[i] = new std::vector<ItemType> (m_width, val);
+        m_data[i].resize(m_width, val);
     }
     m_upToDate = 0;
 }
@@ -42,7 +42,7 @@ template <class ItemType>
 matrix<ItemType>::matrix (const size_t& height, const size_t& width, const ItemType& val) : m_height (height), m_width (width) {
     m_data.resize (m_height);
     for (size_t i = 0; i < m_height; i++) {
-        m_data[i] = new std::vector<ItemType> (m_width, val);
+        m_data[i].resize(m_width, val);
     }
 }
 #endif
@@ -72,9 +72,9 @@ matrix<ItemType>::matrix (const std::vector<std::vector<ItemType>>& vals, bool e
     m_width = maxSize;
     m_data.resize (m_height);
     for (size_t i = 0; i < m_height; i++) {
-        m_data[i] = new std::vector<ItemType> (m_width, 0);
+        m_data[i].resize(m_width, 0);
         for (size_t j = 0; j < vals[i].size(); j++) {
-            (*m_data[i])[j] = vals[i][j];
+            m_data[i][j] = vals[i][j];
         }
     }
     m_gpuSlicesUpToDate.resize (m_height, false);
@@ -93,9 +93,9 @@ matrix<ItemType>::matrix (const std::vector<std::vector<ItemType>>& vals) {
     m_width = maxSize;
     m_data.resize (m_height);
     for (size_t i = 0; i < m_height; i++) {
-        m_data[i] = new std::vector<ItemType> (m_width, 0);
+        m_data[i].resize(m_width, 0);
         for (size_t j = 0; j < vals[i].size(); j++) {
-            (*m_data[i])[j] = vals[i][j];
+            m_data[i][j] = vals[i][j];
         }
     }
 }
@@ -120,9 +120,9 @@ matrix<ItemType>::matrix (const ItemType** vals, const size_t& height, const siz
     m_gpuHeight (NULL), m_gpuWidth (NULL), m_command_queue (NULL), m_leaveOnGPU (false), m_height(height), m_width(width) {
     m_data.resize (m_height);
     for (size_t i = 0; i < m_height; i++) {
-        m_data[i] = new std::vector<ItemType> (m_width, 0);
+        m_data[i].resize(m_width, 0);
         for (size_t j = 0; j < vals[i].size(); j++) {
-            (*m_data[i])[j] = vals[i][j];
+            m_data[i][j] = vals[i][j];
         }
     }
     m_gpuSlicesUpToDate.resize (m_height, false);
@@ -133,9 +133,9 @@ template <class ItemType>
 matrix<ItemType>::matrix (const ItemType** vals, const size_t& height, const size_t& width) : m_height(height), m_width(width) {
     m_data.resize (m_height);
     for (size_t i = 0; i < m_height; i++) {
-        m_data[i] = new std::vector<ItemType> (m_width, 0);
+        m_data[i].resize(m_width, 0);
         for (size_t j = 0; j < vals[i].size(); j++) {
-            (*m_data[i])[j] = vals[i][j];
+            m_data[i][j] = vals[i][j];
         }
     }
 }
@@ -164,9 +164,9 @@ matrix<ItemType>::matrix (const matrix<ArgType>& M) : m_useGPU (M.useGPU()), m_g
         M.pullData();
     }
     for (size_t i = 0; i < m_height; i++) {
-        m_data[i] = new std::vector<ItemType> (m_width);
+        m_data[i].resize(m_width);
         for (size_t j = 0; j < m_width; j++) {
-            (*m_data[i])[j] = ItemType (M[i][j]);
+            m_data[i][j] = ItemType (M[i][j]);
         }
     }
 }
@@ -178,9 +178,9 @@ matrix<ItemType>::matrix (const matrix<ArgType>& M) {
     m_width = M.getWidth();
     m_data.resize (m_height);
     for (size_t i = 0; i < m_height; i++) {
-        m_data[i] = new std::vector<ItemType> (m_width);
+        m_data[i].resize(m_width);
         for (size_t j = 0; j < m_width; j++) {
-            (*m_data[i])[j] = ItemType (M[i][j]);
+            m_data[i][j] = ItemType (M[i][j]);
         }
     }
 }
@@ -205,9 +205,9 @@ matrix<ItemType>::matrix (const matrix<ItemType>& M) : m_useGPU (M.m_useGPU), m_
     m_width = M.m_width;
     m_upToDate = 0;//this will defo be different later
     for (size_t i = 0; i < m_height; i++) {
-        m_data[i] = new std::vector<ItemType> (m_width);
+        m_data[i].resize(m_width);
         for (size_t j = 0; j < m_width; j++) {
-            (*m_data[i])[j] = (*M.m_data[i])[j];
+            m_data[i][j] = M.m_data[i][j];
         }
     }
 
@@ -218,9 +218,9 @@ matrix<ItemType>::matrix (const matrix<ItemType>& M) : m_data (M.m_height) {
     m_height = M.m_height;
     m_width = M.m_width;
     for (size_t i = 0; i < m_height; i++) {
-        m_data[i] = new std::vector<ItemType> (m_width);
+        m_data[i].resize(m_width);
         for (size_t j = 0; j < m_width; j++) {
-            (*m_data[i])[j] = (*M.m_data[i])[j];
+            m_data[i][j] = M.m_data[i][j];
         }
     }
 
@@ -280,9 +280,6 @@ matrix<ItemType>::~matrix() {
         clReleaseMemObject(m_gpuWidth);
     }
 #endif
-    for (auto i = m_data.begin(); i < m_data.end(); i++) {
-        delete *i;
-    }
 }
 //}
 // </editor-fold>
@@ -300,7 +297,7 @@ template <class ItemType>
 void matrix<ItemType>::fill (ItemType val) {
     for (size_t i = 0; i < m_height; i++) {
         for (size_t j = 0; j < m_width; j++) {
-            (*m_data[i])[j] = val;
+            m_data[i][j] = val;
         }
     }
 #ifndef DONT_USE_GPU
@@ -317,8 +314,8 @@ void matrix<ItemType>::fill (ItemType val) {
 template <class ItemType>
 void matrix<ItemType>::clear() {
     for (size_t i = 0; i < m_height; i++) {
-        (*m_data[i]).clear();
-        (*m_data[i]).resize (m_width);
+        m_data[i].clear();
+        m_data[i].resize (m_width);
     }
 #ifndef DONT_USE_GPU
     m_gpuUpToDate = false;
@@ -392,7 +389,7 @@ bool matrix<ItemType>::useGPU() const {
 */
 template <class ItemType>
 ItemType matrix<ItemType>::get (size_t y, size_t x) const  {
-    return (*m_data[y])[x];
+    return m_data[y][x];
 }
 
 /**
@@ -406,7 +403,7 @@ ItemType matrix<ItemType>::get (size_t y, size_t x) const  {
 */
 template <class ItemType>
 void matrix<ItemType>::set (size_t y, size_t x, ItemType val) {
-    (*m_data[y])[x] = val;
+    m_data[y][x] = val;
 #ifndef DONT_USE_GPU
     m_gpuUpToDate = false;
     m_upToDate &= dataFlag::GPU_DATA;
@@ -451,15 +448,15 @@ ItemType matrix<ItemType>::getDeterminant() {
     if (m_height != m_width) {
         m_determinant = 0;//no determinant
     } else if (m_height == 1) {
-        m_determinant = (*m_data[0])[0];
+        m_determinant = m_data[0][0];
     } else if (m_height == 2) {
-        m_determinant = (*m_data[0])[0] * (*m_data[1])[1] - (*m_data[0])[1] * (*m_data[1])[0];
+        m_determinant = m_data[0][0] * m_data[1][1] - m_data[0][1] * m_data[1][0];
     } else {
         int row_swaps;
         matrix<ItemType> detMat (LinAlgo::re (*this, row_swaps));
         m_determinant = (ItemType) 1;
         for (size_t i = 0; i < detMat.m_height; i++) {
-            m_determinant *= (*detMat.m_data[i])[i];
+            m_determinant *= detMat.m_data[i][i];
         }
         if (row_swaps % 2 != 0) {
             m_determinant *= -1;
@@ -482,7 +479,7 @@ ItemType matrix<ItemType>::trace() {
     } else {
         int t = 0;
         for (int i = 0; i < m_height; i++) {
-            t += (*m_data[i])[i];
+            t += m_data[i][i];
         }
         return t;
     }
@@ -512,7 +509,7 @@ matrix<ItemType>& matrix<ItemType>::resize (size_t height, size_t width, ItemTyp
     }
     if (m_width != width) {
         for (size_t i = 0; i < height; i++) {
-            (*m_data[i]).resize (width, val);
+            m_data[i].resize (width, val);
         }
 #ifndef DONT_USE_GPU
         m_upToDate &= !dataFlag::GPU_WIDTH;
@@ -545,7 +542,7 @@ template <class ItemType>
 matrix<ItemType>& matrix<ItemType>::copy (size_t y, size_t x, matrix<ItemType> M) {
     for (size_t i = 0; i < M.m_height && ((i + y) < m_height); i++) {
         for (size_t j = 0; j < M.m_width && ((j + x) < m_width); j++) {
-            (*m_data[i+y])[j+x] = (*M.m_data[i])[j];
+            m_data[i+y][j+x] = M.m_data[i][j];
         }
     }
 #ifndef DONT_USE_GPU
@@ -580,7 +577,7 @@ matrix<ItemType> matrix<ItemType>::subMatrix (size_t y, size_t x, size_t h, size
     matrix<ItemType> result (h, w);
     for (size_t i = 0; i < h; i++) {
         for (size_t j = 0; j < w; j++) {
-            (*result.m_data[i])[j] = (*m_data[i + y])[j + x];
+            result.m_data[i][j] = m_data[i + y][j + x];
         }
     }
     return result;
@@ -596,7 +593,7 @@ matrix<ItemType> matrix<ItemType>::identity (size_t height, size_t width) {
     }
     matrix<ItemType> id (height, width, ItemType (0));
     for (size_t i = 0; i < width && i < height; i++) {
-        id[i][i] = 1;
+        id.m_data[i][i] = 1;
     }
     return id;
 }
@@ -738,7 +735,7 @@ matrix<ItemType> matrix<ItemType>::add (matrix<ArgType>& M) {
 #endif
         for (size_t i = 0; i < result.m_height; i++) {
             for (size_t j = 0; j < result.m_width; j++) {
-                (*result.m_data[i])[j] = (*m_data[i])[j] + (*M.m_data[i])[j];
+                result.m_data[i][j] = m_data[i][j] + M.m_data[i][j];
             }
         }
         return result;
@@ -810,7 +807,7 @@ matrix<ItemType> matrix<ItemType>::add (const ArgType& val) {
 #endif
         for (size_t i = 0; i < result.m_height; i++) {
             for (size_t j = 0; j < result.m_width; j++) {
-                (*result.m_data[i])[j] = (*m_data[i])[j] + val;
+                result.m_data[i][j] = m_data[i][j] + val;
             }
         }
         return result;
@@ -918,7 +915,7 @@ matrix<ItemType> matrix<ItemType>::subtract (matrix<ArgType>& M) {
 #endif
         for (size_t i = 0; i < result.m_height; i++) {
             for (size_t j = 0; j < result.m_width; j++) {
-                (*result.m_data[i])[j] = (*m_data[i])[j] - (*M.m_data[i])[j];
+                result.m_data[i][j] = m_data[i][j] - M.m_data[i][j];
             }
         }
         return result;
@@ -992,7 +989,7 @@ matrix<ItemType> matrix<ItemType>::subtract (const ArgType& val) {
 #endif
         for (size_t i = 0; i < result.m_height; i++) {
             for (size_t j = 0; j < result.m_width; j++) {
-                (*result.m_data[i])[j] = (*m_data[i])[j] - val;
+                result.m_data[i][j] = m_data[i][j] - val;
             }
         }
         return result;
@@ -1106,9 +1103,9 @@ matrix<ItemType> matrix<ItemType>::multiply (matrix<ArgType>& M) {
             for (size_t j = 0; j < result.m_width; j++) {
                 ItemType sum = ItemType (0);
                 for (size_t k = 0; k < m_width; k++) {
-                    sum += (*m_data[i])[k] * (*M.m_data[k])[j];
+                    sum += m_data[i][k] * M.m_data[k][j];
                 }
-                (*result.m_data[i])[j] = sum;
+                result.m_data[i][j] = sum;
             }
         }
         return result;
@@ -1183,7 +1180,7 @@ matrix<ItemType> matrix<ItemType>::multiply (const ArgType& val) {
 #endif
         for (size_t i = 0; i < result.m_height; i++) {
             for (size_t j = 0; j < result.m_width; j++) {
-                (*result.m_data[i])[j] = (*m_data[i])[j] * val;
+                result.m_data[i][j] = m_data[i][j] * val;
             }
         }
         return result;
@@ -1265,7 +1262,7 @@ matrix<ItemType> matrix<ItemType>::elementMultiply (matrix<ArgType>& M) {
 #endif
         for (size_t i = 0; i < result.m_height; i++) {
             for (size_t j = 0; j < result.m_width; j++) {
-                (*result.m_data[i])[j] = (*m_data[i])[j] * (*M.m_data[i])[j];
+                result.m_data[i][j] = m_data[i][j] * M.m_data[i][j];
             }
         }
         return result;
@@ -1385,7 +1382,7 @@ matrix<ItemType> matrix<ItemType>::divide (const ArgType& val) {
 #endif
         for (size_t i = 0; i < result.m_height; i++) {
             for (size_t j = 0; j < result.m_width; j++) {
-                (*result.m_data[i])[j] = (*m_data[i])[j] / val;
+                result.m_data[i][j] = m_data[i][j] / val;
             }
         }
         return result;
@@ -1467,7 +1464,7 @@ matrix<ItemType> matrix<ItemType>::elementDivide (matrix<ArgType>& M) {
 #endif
         for (size_t i = 0; i < result.m_height; i++) {
             for (size_t j = 0; j < result.m_width; j++) {
-                (*result.m_data[i])[j] = (*m_data[i])[j] / (*M.m_data[i])[j];
+                result.m_data[i][j] = m_data[i][j] / M.m_data[i][j];
             }
         }
         return result;
@@ -1556,12 +1553,12 @@ matrix<ItemType>& matrix<ItemType>::transpose() {
     matrix<ItemType> result (m_width, m_height);
     for (size_t i = 0; i < m_width; i++) {
         for (size_t j = 0; j < m_height; j++) {
-            (*result.m_data[i])[j] = (*m_data[j])[i];
+            result.m_data[i][j] = m_data[j][i];
         }
     }
     //I could try to do an in-place transpose on the gpu
     //then pull it... hm. I'll have to look into that later
-    m_data = result.m_data;
+    m_data = std::move(result.m_data);
     m_height = m_width;
     m_width = result.m_width;
 #ifndef DONT_USE_GPU
@@ -1590,7 +1587,7 @@ matrix<ItemType>& matrix<ItemType>::transpose() {
 */
 template <class ItemType>
 std::vector<ItemType>& matrix<ItemType>::operator[] (size_t y) const {
-    return (std::vector<ItemType>&) * m_data[y];
+    return (std::vector<ItemType>&) m_data[y];
     //the data in ram can be changed by this...
     //how to make sure unchanged assumes gpu is safe
     //but know when it's been changed?
@@ -1610,14 +1607,8 @@ matrix<ItemType>& matrix<ItemType>::operator= (const matrix<ItemType>& M) {
         m_height = M.m_height;
     }
     if (m_width != M.m_width) {
-        if (m_width == 0) {
-            for (size_t i = 0; i < m_height; i++) {
-                m_data[i] = new std::vector<ItemType>(M.m_width);
-            }
-        } else {
-            for (size_t i = 0; i < m_height; i++) {
-                (*m_data[i]).resize (M.m_width);
-            }
+        for (size_t i = 0; i < m_height; i++) {
+            m_data[i].resize (M.m_width);
         }
         m_width = M.m_width;
     }
@@ -1652,7 +1643,7 @@ matrix<ItemType>& matrix<ItemType>::operator= (const matrix<ItemType>& M) {
 #endif
         for (size_t i = 0; i < m_height; i++) {
             for (size_t j = 0; j < m_width; j++) {
-                (*m_data[i])[j] = (*M.m_data[i])[j];
+                m_data[i][j] = M.m_data[i][j];
             }
         }
 #ifndef DONT_USE_GPU
@@ -1717,14 +1708,8 @@ matrix<ItemType>& matrix<ItemType>::operator= (const matrix<ArgType>& M) {
         m_height = M.getHeight();
     }
     if (m_width != M.getWidth()) {
-        if (m_width == 0) {
-            for (size_t i = 0; i < m_height; i++) {
-                m_data[i] = new std::vector<ItemType>(M.getWidth());
-            }
-        } else {
-            for (size_t i = 0; i < m_height; i++) {
-                (*m_data[i]).resize (M.getWidth());
-            }
+        for (size_t i = 0; i < m_height; i++) {
+            m_data[i].resize (M.getWidth());
         }
         m_width = M.getWidth();
     }
@@ -1735,7 +1720,7 @@ matrix<ItemType>& matrix<ItemType>::operator= (const matrix<ArgType>& M) {
 #endif
     for (size_t i = 0; i < m_height; i++) {
         for (size_t j = 0; j < m_width; j++) {
-            (*m_data[i])[j] = ItemType (M[i][j]);
+            m_data[i][j] = ItemType (M[i][j]);
         }
     }
 
@@ -1780,7 +1765,7 @@ bool matrix<ItemType>::operator== (const matrix<ArgType>& M) const {
     }
     for (size_t i = 0; i < m_height; i++) {
         for (size_t j = 0; j < m_width; j++) {
-            if ((*m_data[i])[j] != (*M.m_data[i])[j]) {
+            if (m_data[i][j] != M.m_data[i][j]) {
                 return false;
             }
         }
@@ -1802,7 +1787,7 @@ bool matrix<ItemType>::operator!= (const matrix<ArgType>& M) const {
     }
     for (size_t i = 0; i < m_height; i++) {
         for (size_t j = 0; j < m_width; j++) {
-            if ((*m_data[i])[j] == (*M.m_data[i])[j]) {
+            if (m_data[i][j] == M.m_data[i][j]) {
                 return false;
             }
         }
@@ -1924,7 +1909,7 @@ cl_int matrix<ItemType>::pushToGPU (cl_command_queue& command_queue) {
     if (! (m_upToDate & dataFlag::GPU_DATA)) {
         for (size_t i = 0; i < m_height; i++) {
             if (!m_gpuSlicesUpToDate[i]) {
-                ret = clEnqueueWriteBuffer (command_queue, m_gpuData, CL_TRUE, i * m_width * sizeof (ItemType), m_width * sizeof (ItemType), (*m_data[i]).data(), 0, NULL, NULL);
+                ret = clEnqueueWriteBuffer (command_queue, m_gpuData, CL_TRUE, i * m_width * sizeof (ItemType), m_width * sizeof (ItemType), m_data[i].data(), 0, NULL, NULL);
                 if (ret != CL_SUCCESS) {
                     printf ("Unable to push data to GPU, error code: %d\n", ret);
                     return ret;
@@ -1965,7 +1950,7 @@ cl_int matrix<ItemType>::pullFromGPU (cl_command_queue& command_queue) {
     cl_int ret;
 
     for (int i = 0; i < m_height; i++) {
-        ret = clEnqueueReadBuffer (command_queue, m_gpuData, CL_TRUE, i * m_width * sizeof (ItemType), m_width * sizeof (ItemType), (*m_data[i]).data(), 0, NULL, NULL);
+        ret = clEnqueueReadBuffer (command_queue, m_gpuData, CL_TRUE, i * m_width * sizeof (ItemType), m_width * sizeof (ItemType), m_data[i].data(), 0, NULL, NULL);
         if (ret != CL_SUCCESS) {
             printf ("Unable to retrieve data from GPU, error code: %d\n", ret);
             return ret;

@@ -219,7 +219,7 @@ public:
         using pointer = ptr_type*;
         using reference = ptr_type&;
 
-        iterator(long int index, size_t _min, size_t _max, size_t _width, std::vector<std::vector<ItemType>*>* _data) : m_index(index), m_min(_min), m_max(_max), mat_width(_width), mat_data(_data) {
+        iterator(long int index, size_t _min, size_t _max, size_t _width, std::vector<std::vector<ItemType>>* _data) : m_index(index), m_min(_min), m_max(_max), mat_width(_width), mat_data(_data) {
             //assert index between min and max
         }
         iterator(const iterator<ptr_type>& other) {
@@ -317,23 +317,23 @@ public:
 
         //access
         iterator<ptr_type>& operator=(const ItemType& item) {
-            (*(*mat_data)[m_index/mat_width])[m_index%mat_width] = item;
+            (*mat_data)[m_index/mat_width][m_index%mat_width] = item;
             return *this;
         }
         reference operator*() const {
-            return (reference) (*(*mat_data)[m_index/mat_width])[m_index%mat_width];
+            return (reference) (*mat_data)[m_index/mat_width][m_index%mat_width];
         }
         pointer operator->() {
-            return (ptr_type) &(*(*mat_data)[m_index/mat_width])[m_index%mat_width];
+            return (ptr_type) &(*mat_data)[m_index/mat_width][m_index%mat_width];
         }
         reference operator[](const size_t index) const {
             //assert m_index + index
             size_t pos = m_index + index;
-            return (reference) (*(*mat_data)[pos/mat_width])[pos%mat_width];
+            return (reference) (*mat_data)[pos/mat_width][pos%mat_width];
         }
 
     private:
-        std::vector<std::vector<ItemType>*>* mat_data;
+        std::vector<std::vector<ItemType>>* mat_data;
         size_t mat_width;
         long int m_index;//so that can check negative index
         size_t m_min;
@@ -350,7 +350,7 @@ public:
 
 private:
 //basic data
-    std::vector<std::vector<ItemType>*> m_data;
+    std::vector<std::vector<ItemType>> m_data;
     size_t m_height;
     size_t m_width;
     ItemType m_determinant;

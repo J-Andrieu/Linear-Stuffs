@@ -437,7 +437,7 @@ LinAlgo::matrix<ItemType> LinAlgo::transpose (const LinAlgo::matrix<ItemType>& M
     } else {
         for (size_t i = 0; i < M.m_height; i++) {
             for (size_t j = 0; j < M.m_width; j++) {
-                (*result.m_data[j])[i] = (*M.m_data[i])[j];
+                result.m_data[j][i] = M.m_data[i][j];
             }
         }
     }
@@ -455,10 +455,10 @@ LinAlgo::matrix<ItemType> LinAlgo::inverse (matrix<ItemType>& M) { //would be co
         return matrix<ItemType> (0, 0);
     } else if (M.m_height == 1) {
         matrix<ItemType> ret (M);
-        if ((*M.m_data[0])[0] == 0) {
+        if (M.m_data[0][0] == 0) {
             return matrix<ItemType> (0, 0);
         }
-        (*ret.m_data[0])[0] = 1 / (*ret.m_data[0])[0];
+        ret.m_data[0][0] = 1 / ret.m_data[0][0];
         return ret;
     } else if (M.m_height == 2) {
         matrix<ItemType> ret (M.m_height, M.m_height);
@@ -466,10 +466,10 @@ LinAlgo::matrix<ItemType> LinAlgo::inverse (matrix<ItemType>& M) { //would be co
         if (det == 0) {
             return matrix<ItemType> (0, 0);
         }
-        (*ret.m_data[0])[0] = (*M.m_data[1])[1];
-        (*ret.m_data[1])[1] = (*M.m_data[0])[0];
-        (*ret.m_data[0])[1] = -1 * (*M.m_data[0])[1];
-        (*ret.m_data[1])[0] = -1 * (*M.m_data[1])[0];
+        ret.m_data[0][0] = M.m_data[1][1];
+        ret.m_data[1][1] = M.m_data[0][0];
+        ret.m_data[0][1] = -1 * M.m_data[0][1];
+        ret.m_data[1][0] = -1 * M.m_data[1][0];
         return ret / det;
     } else {
         if (M.getDeterminant() == 0) {
@@ -480,9 +480,9 @@ LinAlgo::matrix<ItemType> LinAlgo::inverse (matrix<ItemType>& M) { //would be co
         augmented.useGPU(M.useGPU());
 #endif
         for (size_t i = 0; i < augmented.m_height; i++) {
-            (*augmented.m_data[i])[i + M.m_width] = 1;
+            augmented.m_data[i][i + M.m_width] = 1;
             for (size_t j = 0; j < M.m_width; j++) {
-                (*augmented.m_data[i])[j] = (*M.m_data[i])[j];
+                augmented.m_data[i][j] = M.m_data[i][j];
             }
         }
         return gj (augmented).subMatrix (0, M.m_width, M.m_height, M.m_width);
@@ -509,7 +509,7 @@ bool LinAlgo::qr (const LinAlgo::matrix<ItemType>& M, matrix<ItemType>& Q, matri
     } else {
         std::vector<std::vector<ItemType>> data(M_trans.m_height);
         for (size_t i = 0; i < M_trans.m_height; i++) {
-            data[i] = *M_trans.m_data[i];
+            data[i] = M_trans.m_data[i];
         }
         data = gs<std::vector<ItemType>, ItemType>( data, [](const std::vector<ItemType>& A, const std::vector<ItemType>& B){return A * B;});
         for (size_t i = 0; i < data.size(); i++) {
@@ -554,14 +554,14 @@ LinAlgo::matrix<ItemType> LinAlgo::re (const LinAlgo::matrix<ItemType>& M) {
 
             //find or create the pivot
             pivotFound = true;
-            if ((*result.m_data[pivotRow])[pivotColumn] == 0) {
+            if (result.m_data[pivotRow][pivotColumn] == 0) {
                 pivotFound = false;
                 for (size_t j = pivotRow; j < result.m_height; j++) {
-                    if ((*result.m_data[j])[pivotColumn] != 0) {
+                    if (result.m_data[j][pivotColumn] != 0) {
                         pivotFound = true;
                         if (j != pivotRow) {
                             //swap the pivot row with the current row
-                            result.m_data[pivotRow]->swap (*result.m_data[j]);
+                            result.m_data[pivotRow].swap(result.m_data[j]);
                         }
                     }
                 }
@@ -573,11 +573,11 @@ LinAlgo::matrix<ItemType> LinAlgo::re (const LinAlgo::matrix<ItemType>& M) {
             }
 
             //eliminate below pivot
-            pivot = (*result.m_data[pivotRow])[pivotColumn];
+            pivot = result.m_data[pivotRow][pivotColumn];
             for (size_t j = pivotRow + 1; j < result.m_height; j++) {
-                scalar = (*result.m_data[j])[pivotColumn] / pivot;
+                scalar = result.m_data[j][pivotColumn] / pivot;
                 for (size_t k = pivotColumn; k < result.m_width; k++) {
-                    (*result.m_data[j])[k] -= (*result.m_data[pivotRow])[k] * scalar;
+                    result.m_data[j][k] -= result.m_data[pivotRow][k] * scalar;
                 }
             }
         }
@@ -613,14 +613,14 @@ LinAlgo::matrix<ItemType> LinAlgo::re (const LinAlgo::matrix<ItemType>& M, int& 
 
             //find or create the pivot
             pivotFound = true;
-            if ((*result.m_data[pivotRow])[pivotColumn] == 0) {
+            if (result.m_data[pivotRow][pivotColumn] == 0) {
                 pivotFound = false;
                 for (size_t j = pivotRow; j < result.m_height; j++) {
-                    if ((*result.m_data[j])[pivotColumn] != 0) {
+                    if (result.m_data[j][pivotColumn] != 0) {
                         pivotFound = true;
                         if (j != pivotRow) {
                             //swap the pivot row with the current row
-                            result.m_data[pivotRow]->swap (*result.m_data[j]);
+                            result.m_data[pivotRow].swap(result.m_data[j]);
                             row_swaps++;
                         }
                     }
@@ -633,11 +633,11 @@ LinAlgo::matrix<ItemType> LinAlgo::re (const LinAlgo::matrix<ItemType>& M, int& 
             }
 
             //eliminate below pivot
-            pivot = (*result.m_data[pivotRow])[pivotColumn];
+            pivot = result.m_data[pivotRow][pivotColumn];
             for (size_t j = pivotRow + 1; j < result.m_height; j++) {
-                scalar = (*result.m_data[j])[pivotColumn] / pivot;
+                scalar = result.m_data[j][pivotColumn] / pivot;
                 for (size_t k = pivotColumn; k < result.m_width; k++) {
-                    (*result.m_data[j])[k] -= (*result.m_data[pivotRow])[k] * scalar;
+                    result.m_data[j][k] -= result.m_data[pivotRow][k] * scalar;
                 }
             }
         }
@@ -656,10 +656,10 @@ LinAlgo::matrix<ItemType> LinAlgo::rre (const LinAlgo::matrix<ItemType>& M) {
     } else {
         ItemType scalar;
         for (size_t i = 0, j = 0; i < result.m_height && j < result.m_width; i++, j++) {
-            if ((*result.m_data[i])[j] != 0) {
-                scalar = (*result.m_data[i])[j];
+            if (result.m_data[i][j] != 0) {
+                scalar = result.m_data[i][j];
                 for (size_t k = j; k < M.m_width; k++) {
-                    (*result.m_data[i])[k] /= scalar;
+                    result.m_data[i][k] /= scalar;
                 }
             } else {
                 i--;
@@ -681,11 +681,11 @@ LinAlgo::matrix<ItemType> LinAlgo::gj (const LinAlgo::matrix<ItemType>& M) {
         ItemType scalar;
         //stars at 1,1 b/c can't eliminate above row 0
         for (size_t pivotRow = 1, pivotColumn = 1; pivotRow < result.m_height && pivotColumn < result.m_width; pivotRow++, pivotColumn++) {
-            if ((*result.m_data[pivotRow])[pivotColumn] == 1) {
+            if (result.m_data[pivotRow][pivotColumn] == 1) {
                 for (size_t i = pivotRow - 1; i >= 0 && i < (((size_t) 0) - 1); i--) {
-                    scalar = (*result.m_data[i])[pivotColumn];
+                    scalar = result.m_data[i][pivotColumn];
                     for (size_t j = pivotColumn; j < result.m_width; j++) {
-                        (*result.m_data[i])[j] -= (*result.m_data[pivotRow])[j] * scalar;
+                        result.m_data[i][j] -= result.m_data[pivotRow][j] * scalar;
                     }
                 }
             } else {
