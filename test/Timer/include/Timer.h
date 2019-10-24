@@ -32,6 +32,7 @@ namespace Timers {
 
     static std::vector<timerScope> named_timers;
     static std::string out_file = "";
+    static bool toScreen = false;
 }
 
 class Timer {

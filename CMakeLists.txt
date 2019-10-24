@@ -55,6 +55,7 @@ IF(Build_Tests)
 			       "${CMAKE_SOURCE_DIR}/test/tests/*")
 	FILE(GLOB test_HEADERS "${CMAKE_SOURCE_DIR}/test/CMDParser/include/*"
 			       "${CMAKE_SOURCE_DIR}/test/Timer/include/*")
+		       #"${CMAKE_SOURCE_DIR}/test/tests/*.h")
 	ADD_LIBRARY(UTILS ${test_SOURCES} ${test_HEADERS})
 
 	FILE(GLOB test_source "${CMAKE_SOURCE_DIR}/test/test.cpp")

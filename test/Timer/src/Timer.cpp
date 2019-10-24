@@ -21,10 +21,16 @@ void Timers::logNamedTimers() {
         time_t currentTime = std::chrono::system_clock::to_time_t (std::chrono::system_clock::now());
         out << "====================================" << std::endl;
         out << "Begin Timer Log: " << std::put_time(std::localtime(&currentTime), "%Y-%m-%d %X") << std::endl;
-        out << "====================================" << std::endl << std::endl;
-        for (auto i = named_timers.begin(); i < named_timers.end(); i++) {
-            std::cout << i->m_scopeName << ": " << *(i->m_executionTime) << "us" << std::endl;
-            out << i->m_scopeName << ": " << *(i->m_executionTime) << "us" << std::endl;
+        out << "====================================" << std::endl;
+        if (Timers::toScreen) {
+            for (auto i = named_timers.begin(); i < named_timers.end(); i++) {
+                std::cout << i->m_scopeName << ": " << *(i->m_executionTime) << "us" << std::endl;
+                out << i->m_scopeName << ": " << *(i->m_executionTime) << "us" << std::endl;
+            }
+        } else {
+            for (auto i = named_timers.begin(); i < named_timers.end(); i++) {
+                out << i->m_scopeName << ": " << *(i->m_executionTime) << "us" << std::endl;
+            }
         }
     }
 }

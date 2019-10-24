@@ -236,7 +236,7 @@ public:
             //assert in range
             return *this;
         }
-        iterator<ptr_type>& operator++(int) {
+        iterator<ptr_type> operator++(int) {
             iterator<ptr_type> ret = *this;
             ++(*this);
             return ret;
@@ -246,7 +246,7 @@ public:
             //assert
             return *this;
         }
-        iterator<ptr_type>& operator--(int) {
+        iterator<ptr_type> operator--(int) {
             iterator<ptr_type> ret = *this;
             --(*this);
             //assert
