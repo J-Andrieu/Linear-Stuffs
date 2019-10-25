@@ -6,14 +6,23 @@
 * @notes Requires LinAlgo.h and Timer.h
 */
 
+#ifndef TESTING_UTILITIES
+#define TESTING_UTILITIES
+
 #include <cstdlib>
 #include <iostream>
+#include <fstream>
+#include <iomanip>
 #include <string>
+#include <sstream>
 #include <tuple>
+#include <algorithm>
+#include <climits>
+#include <chrono>
 
-
-#include "../../include/LinAlgo.hpp"
-#include "../Timer/include/Timer.h"
+#include "../include/LinAlgo.hpp"
+#include "Timer/include/Timer.h"
+#include "CMDParser/include/CMDParser.h"
 
 template <class ItemType>
 void print_matrix (const LinAlgo::matrix<ItemType>& M, int padding = -10) {
@@ -67,3 +76,4 @@ std::tuple<size_t, size_t, ItemType, ItemType> locateError(const LinAlgo::matrix
     return {0, 0, 0, 0};
 }
 #endif
+#endif // TESTING_UTILITIES

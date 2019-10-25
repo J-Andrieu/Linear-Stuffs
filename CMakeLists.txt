@@ -51,11 +51,10 @@ IF(Build_Tests)
 
 	# Build test suite library
 	FILE(GLOB test_SOURCES "${CMAKE_SOURCE_DIR}/test/CMDParser/src/*"
-			       "${CMAKE_SOURCE_DIR}/test/Timer/src/*"
-			       "${CMAKE_SOURCE_DIR}/test/tests/*")
+			       "${CMAKE_SOURCE_DIR}/test/Timer/src/*")
 	FILE(GLOB test_HEADERS "${CMAKE_SOURCE_DIR}/test/CMDParser/include/*"
-			       "${CMAKE_SOURCE_DIR}/test/Timer/include/*")
-		       #"${CMAKE_SOURCE_DIR}/test/tests/*.h")
+			       "${CMAKE_SOURCE_DIR}/test/Timer/include/*"
+			       "${CMAKE_SOURCE_DIR}/test/utilities.h")
 	ADD_LIBRARY(UTILS ${test_SOURCES} ${test_HEADERS})
 
 	FILE(GLOB test_source "${CMAKE_SOURCE_DIR}/test/test.cpp")

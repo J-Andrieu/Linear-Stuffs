@@ -155,14 +155,15 @@ template <class ArgType>
 matrix<ItemType>::matrix (const matrix<ArgType>& M) : m_useGPU (M.useGPU()), m_gpuUpToDate (false),
     m_gpuData (NULL), m_gpuHeight (NULL),
     m_gpuWidth (NULL), m_command_queue (NULL),
-    m_gpuSlicesUpToDate (M.getHeight, false), m_leaveOnGPU (M.leaveDataOnGPU()) {
+    m_gpuSlicesUpToDate (M.getHeight(), false), m_leaveOnGPU (M.leaveDataOnGPU()) {
     m_height = M.getHeight();
     m_width = M.getWidth();
     m_upToDate = 0;//this will defo be different later
     m_data.resize (m_height);
-    if (M.leaveDataOnGPU()) {
-        M.pullData();
-    }
+    //it's up to the programmer to remember to pull data if they want it left on the gpu
+    //if (M.leaveDataOnGPU()) {
+    //    M.pullData();
+    //}
     for (size_t i = 0; i < m_height; i++) {
         m_data[i].resize(m_width);
         for (size_t j = 0; j < m_width; j++) {

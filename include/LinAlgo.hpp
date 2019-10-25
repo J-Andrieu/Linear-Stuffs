@@ -315,7 +315,7 @@ static cl_int LinAlgo::InitGPU() {
                 // Get the log
                 clGetProgramBuildInfo (programs[type], m_device_id, CL_PROGRAM_BUILD_LOG, log_size, log, NULL);
 
-                // Print the log
+                // Printvoid CheckAccuracy(size_t height, size_t width, std::string logfile, bool verbose);
                 printf ("program_%s build unsuccessful:\n%s\n", type_str[type].c_str(), log);
             }
             return ret;
