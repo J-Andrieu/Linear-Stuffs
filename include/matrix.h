@@ -10,7 +10,7 @@
 #define _MATRIXH_INCLUDED
 #include "LinAlgo.hpp"
 
-//I need to find a wag to allow functions that update GPU data to still be const
+//I need to find a way to allow functions that update GPU data to still be const
 
 /**
 * @class matrix
