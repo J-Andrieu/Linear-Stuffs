@@ -118,6 +118,15 @@ namespace LinAlgo {
     public:
         gpu_exception(std::string msg, const char* _file, int _line, cl_int err) : m_what(msg), m_file(_file), m_error(err) {
             m_line = std::to_string(_line);
+            m_log = NULL;
+        }
+
+        ~gpu_exception() {
+            free(m_log);
+        }
+
+        void setLog(char* log) {
+            m_log = log;
         }
 
         const char* what() {
@@ -136,10 +145,15 @@ namespace LinAlgo {
             return m_error;
         }
 
+        char* getLog() {
+            return m_log;
+        }
+
     private:
         std::string m_what;
         std::string m_file;
         std::string m_line;
+        char* m_log;
         cl_int m_error;
     };
 
@@ -153,7 +167,7 @@ namespace LinAlgo {
             std::ifstream file;
             file.open (filename.c_str(), std::ios::in);
             if (file.bad()) {
-                printf ("Failed to load kernel.cl!\n");
+                throw(gpu_exception(std::string("Failed to load ") + filename, __FILE__, __LINE__, -100));
             }
             std::string line;
             std::string kernel_src;
@@ -378,6 +392,8 @@ const char* LinAlgo::getErrorString (cl_int error) {
         //something else
         case -99:
             return "LINAGLO_INVALID_MATRIX_CONDITION";
+        case -100:
+            return "LINALGO_INVALID_INITIALIZATION";
 
         // extension errors
         case -1000:
@@ -419,8 +435,7 @@ static cl_int LinAlgo::InitGPU() {
     m_platform_id = new cl_platform_id[ret_num_platforms];
     ret = clGetPlatformIDs (ret_num_platforms, m_platform_id, &ret_num_platforms);
     if (ret != CL_SUCCESS) {
-        printf ("Could not get platform IDs.\n");
-        return ret;
+        throw(gpu_exception("Unable to load platform IDs", __FILE__, __LINE__, ret));
     }
     int platform_index = choosePlatform (m_platform_id, ret_num_platforms, 2.2);
     OPENCL_VERSION = getPlatformVersion (m_platform_id[platform_index]);
@@ -432,7 +447,7 @@ static cl_int LinAlgo::InitGPU() {
     if (ret_num_devices == 0) {
         ret = clGetDeviceIDs (m_platform_id[platform_index], CL_DEVICE_TYPE_CPU, 0, NULL, &ret_num_devices);
         if (ret_num_devices == 0) {
-            printf ("Warning: No OpenCL device available\n");
+            throw(gpu_exception("No OpenCL devices available", __FILE__, __LINE__, ret));
             return ret;
         } else {
             //printf ("CPU device chosen\n");
@@ -444,15 +459,14 @@ static cl_int LinAlgo::InitGPU() {
     }
 
     if (ret != CL_SUCCESS) {
-        printf ("Could not get device IDs.\n");
+        throw(gpu_exception("Unable to get device IDs", __FILE__, __LINE__, ret));
         return ret;
     }
 
     //create the context
     m_context = clCreateContext (NULL, 1, &m_device_id, NULL, NULL, &ret);
     if (ret != CL_SUCCESS) {
-        printf ("Could not create context.\n");
-        return ret;
+        throw(gpu_exception("Unable to create context", __FILE__, __LINE__, ret));
     }
 
     /*
@@ -476,8 +490,7 @@ static cl_int LinAlgo::InitGPU() {
                                          m_context,
                                          &ret);
         if (ret != CL_SUCCESS) {
-            printf ("Could not create program.\n");
-            return ret;
+            throw(gpu_exception("Unable to create program", __FILE__, __LINE__, ret));
         }
     }
 
@@ -485,6 +498,7 @@ static cl_int LinAlgo::InitGPU() {
     for (size_t type = 0; type < KernelType::NUM_TYPES; type++) {
         ret = clBuildProgram (programs[type], 1, &m_device_id, NULL, NULL, NULL);
         if (ret != CL_SUCCESS) {
+            gpu_exception ouch(std::string("program ") + type_str[type] + std::string(" build unsiccessful"), __FILE__, __LINE__, ret);
             if (ret == CL_BUILD_PROGRAM_FAILURE) {
                 // Determine the size of the log
                 size_t log_size;
@@ -497,9 +511,9 @@ static cl_int LinAlgo::InitGPU() {
                 clGetProgramBuildInfo (programs[type], m_device_id, CL_PROGRAM_BUILD_LOG, log_size, log, NULL);
 
                 // Printvoid CheckAccuracy(size_t height, size_t width, std::string logfile, bool verbose);
-                printf ("program_%s build unsuccessful:\n%s\n", type_str[type].c_str(), log);
+                ouch.setLog(log);
             }
-            return ret;
+            throw(ouch);
         }
     }
 
@@ -510,8 +524,7 @@ static cl_int LinAlgo::InitGPU() {
         for (size_t kernel = 0; kernel < Kernel::NUM_KERNELS; kernel++) {
             m_Kernels[type][kernel] = clCreateKernel (programs[type], kernelNames[kernel].c_str(), &ret);
             if (ret != CL_SUCCESS) {
-                //printf("Could not create kernel. Kernel name: %s, type: %s\n", kernelNames[kernel].c_str(), type_str[type].c_str());
-                return ret;
+                throw(gpu_exception(std::string("Could not create kernel. Kernel name: ") + kernelNames[kernel] + std::string(", type: ") + type_str[type].c_str(), __FILE__, __LINE__, ret));
             }
         }
     }
