@@ -187,23 +187,23 @@ size_t testGPUvsCPUSpeed(std::ofstream& log, bool verbose, std::string test) {
             *j = static_cast<double>(rand());
         }
         try {
-        gpuMatrix.pushData();
-        if (test == "addition") {
-            Timer cpu;
-            junkResult = cpuMatrix + cpuMatrix;
-            cpuTime = cpu.getMicrosecondsElapsed();
-            Timer gpu;
-            junkResult = gpuMatrix + gpuMatrix;
-            gpuTime = gpu.getMicrosecondsElapsed();
-        }
-        if (test == "multiplication") {
-            Timer cpu;
-            junkResult = cpuMatrix * cpuMatrix;
-            cpuTime = cpu.getMicrosecondsElapsed();
-            Timer gpu;
-            junkResult = gpuMatrix * gpuMatrix;
-            gpuTime = gpu.getMicrosecondsElapsed();
-        }
+            gpuMatrix.pushData();
+            if (test == "addition") {
+                Timer cpu;
+                junkResult = cpuMatrix + cpuMatrix;
+                cpuTime = cpu.getMicrosecondsElapsed();
+                Timer gpu;
+                junkResult = gpuMatrix + gpuMatrix;
+                gpuTime = gpu.getMicrosecondsElapsed();
+            }
+            if (test == "multiplication") {
+                Timer cpu;
+                junkResult = cpuMatrix * cpuMatrix;
+                cpuTime = cpu.getMicrosecondsElapsed();
+                Timer gpu;
+                junkResult = gpuMatrix * gpuMatrix;
+                gpuTime = gpu.getMicrosecondsElapsed();
+            }
         } catch (...) {
             keepTrying = false;
         }

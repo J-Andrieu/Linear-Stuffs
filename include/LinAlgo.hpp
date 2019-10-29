@@ -129,7 +129,7 @@ namespace LinAlgo {
             m_log = log;
         }
 
-        const char* what() {
+        const char* what() const throw() {
             return m_what.c_str();
         }
 
