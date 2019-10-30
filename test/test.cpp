@@ -12,7 +12,9 @@
 int HEIGHT = 15;
 int WIDTH = 15;
 
+#ifndef DONT_USE_GPU
 void checkReturn (cl_int ret);
+#endif
 
 void CheckSpeed(std::string logfile, bool verbose);
 void CheckAccuracy(size_t height, size_t width, std::string logfile, bool verbose);
