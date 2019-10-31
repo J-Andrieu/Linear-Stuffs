@@ -46,6 +46,7 @@ int main (int argc, char* argv[]) {
     params.methods_test = false;
     params.matrix_test = false;
     params.all = false;
+    params.verbose = false;
     params.log_file = "log.txt";
 
     CMDParser parser;

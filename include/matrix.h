@@ -30,6 +30,7 @@ class LinAlgo::matrix {
 public:
     //constructors
 #ifndef DONT_USE_GPU
+    //maybe have one that doesn't initialize m_data. Like a "leave on gpu" from the very start? just to make initializing a little faster in situations that need it
     matrix (const size_t& height, const size_t& width, const ItemType& val = ItemType(0), bool enable_gpu = false);
     matrix (const std::vector<std::vector<ItemType>>& vals, bool enable_gpu = false);
     matrix (const ItemType** vals, const size_t& height, const size_t& width, bool enable_gpu = false);
@@ -114,14 +115,13 @@ public:
     matrix<ItemType>& transpose();
     matrix<ItemType>& inverse();
 
-    template <class ArgType>
-    matrix<ArgType> map (ArgType (*function) (ItemType)); //map a function via the cpu
+    matrix<ItemType>& map(ItemType (*func) (ItemType&)); //map a function via the cpu
+
     //I don't think I can actually template the gpu maps... we'll cross that bridge later
+    //spatial map, like a mask? hmmmm... probably is something i should have
 #ifndef DONT_USE_GPU
-    template <class ArgType>
-    matrix<ArgType> mapGPU (std::string kernel, cl_int& error_code); //this function will compile and run a kernel that acts on a single array pointer... be careful
-    template <class ArgType>
-    matrix<ArgType> mapGPU (cl_kernel kernel, cl_int& error_code);
+    matrix<ItemType>& mapGPU (std::string kernel, cl_int& error_code); //this function will compile and run a kernel that acts on a single array pointer... be careful
+    matrix<ItemType>& mapGPU (cl_kernel kernel, cl_int& error_code); //it will also assume that your kernel is accepting the right data from that array, so once again, be careful :P
     //should this take another one that's just a fully compiled and such kernel? probably
 #endif
 

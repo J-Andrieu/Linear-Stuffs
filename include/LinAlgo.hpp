@@ -157,7 +157,7 @@ namespace LinAlgo {
         cl_int m_error;
     };
 
-    const char* getErrorString (cl_int error);
+    static const char* getErrorString (cl_int error);
 
     namespace {
 //private functions
