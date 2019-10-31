@@ -683,6 +683,18 @@ LinAlgo::matrix<ItemType> LinAlgo::inverse (matrix<ItemType>& M) { //would be co
     }
 }
 
+template <class ItemType, class ArgType>
+LinAlgo::matrix<ArgType> LinAlgo::map(LinAlgo::matrix<ItemType> &M, ArgType (*func)(ItemType&)) {
+	matrix<ArgType> ret(M.getHeight(), M.getWidth());
+	//all the extras that need to be copied (gpu setup)
+	for (size_t i = 0; i < M.getHeight(); i++) {
+		for (size_t j = 0; j < M.getWidth(); j++) {
+			ret[i][j] = func(M[i][j]);
+		}
+	}
+	return ret;
+}
+
 /**
 * @brief QR decomposition
 *
@@ -748,10 +760,10 @@ LinAlgo::matrix<ItemType> LinAlgo::re (const LinAlgo::matrix<ItemType>& M) {
 
             //find or create the pivot
             pivotFound = true;
-            if (result.m_data[pivotRow][pivotColumn] == 0) {
+            if (result.m_data[pivotRow][pivotColumn] == ItemType(0)) {
                 pivotFound = false;
                 for (size_t j = pivotRow; j < result.m_height; j++) {
-                    if (result.m_data[j][pivotColumn] != 0) {
+                    if (result.m_data[j][pivotColumn] != ItemType(0)) {
                         pivotFound = true;
                         if (j != pivotRow) {
                             //swap the pivot row with the current row
@@ -807,10 +819,10 @@ LinAlgo::matrix<ItemType> LinAlgo::re (const LinAlgo::matrix<ItemType>& M, int& 
 
             //find or create the pivot
             pivotFound = true;
-            if (result.m_data[pivotRow][pivotColumn] == 0) {
+            if (result.m_data[pivotRow][pivotColumn] == ItemType(0)) {
                 pivotFound = false;
                 for (size_t j = pivotRow; j < result.m_height; j++) {
-                    if (result.m_data[j][pivotColumn] != 0) {
+                    if (result.m_data[j][pivotColumn] != ItemType(0)) {
                         pivotFound = true;
                         if (j != pivotRow) {
                             //swap the pivot row with the current row
@@ -850,7 +862,7 @@ LinAlgo::matrix<ItemType> LinAlgo::rre (const LinAlgo::matrix<ItemType>& M) {
     } else {
         ItemType scalar;
         for (size_t i = 0, j = 0; i < result.m_height && j < result.m_width; i++, j++) {
-            if (result.m_data[i][j] != 0) {
+            if (result.m_data[i][j] != ItemType(0)) {
                 scalar = result.m_data[i][j];
                 for (size_t k = j; k < M.m_width; k++) {
                     result.m_data[i][k] /= scalar;
@@ -875,7 +887,7 @@ LinAlgo::matrix<ItemType> LinAlgo::gj (const LinAlgo::matrix<ItemType>& M) {
         ItemType scalar;
         //stars at 1,1 b/c can't eliminate above row 0
         for (size_t pivotRow = 1, pivotColumn = 1; pivotRow < result.m_height && pivotColumn < result.m_width; pivotRow++, pivotColumn++) {
-            if (result.m_data[pivotRow][pivotColumn] == 1) {
+            if (result.m_data[pivotRow][pivotColumn] == ItemType(1)) {
                 for (size_t i = pivotRow - 1; i >= 0 && i < (((size_t) 0) - 1); i--) {
                     scalar = result.m_data[i][pivotColumn];
                     for (size_t j = pivotColumn; j < result.m_width; j++) {
