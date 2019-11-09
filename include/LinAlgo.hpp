@@ -14,6 +14,7 @@
 #include <string>
 #include <type_traits>
 #include <cassert>
+#include <thread>
 
 #ifndef DONT_USE_GPU
 #define CL_USE_DEPRECATED_OPENCL_1_2_APIS //just in case somone has OpenCL 1.2

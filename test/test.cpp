@@ -106,6 +106,22 @@ int main (int argc, char* argv[]) {
         if(params.accuracy_test || params.all) {
             CheckAccuracy(HEIGHT, WIDTH, params.log_file, params.verbose);
         }
+/**
+        printf("Testing asynchronous map function\n");
+        char (*threading_test)(char&) = [](char& doot) -> char {
+                        std::this_thread::sleep_for(std::chrono::microseconds(200));
+                        return (char) doot * 2;
+                    };
+        LinAlgo::matrix<char> testmap1(10, 10, 5);
+        LinAlgo::matrix<char> testmap2(10, 10, 5);
+        Timer t1;
+        testmap1.map(threading_test, false);
+        printf("Finished control after %d milliseconds\n", (int) t1.getMicrosecondsElapsed() / 1000);
+        Timer t2;
+        testmap2.map(threading_test, true);
+        printf("Finished threaded after %d milliseconds\n", (int) t2.getMicrosecondsElapsed() / 1000);
+        std::cout << std::endl;
+*/
 /*
         if(params.methods_test || params.all) {
             CheckMethods(HEIGHT, WIDTH, params.log_file, params.verbose);

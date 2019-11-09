@@ -31,11 +31,13 @@ public:
     //constructors
 #ifndef DONT_USE_GPU
     //maybe have one that doesn't initialize m_data. Like a "leave on gpu" from the very start? just to make initializing a little faster in situations that need it
-    matrix (const size_t& height, const size_t& width, const ItemType& val = ItemType(0), bool enable_gpu = false);
+    matrix();//no allocating space or copying, meant for transferring over gpu data only
+    matrix (const size_t& height, const size_t& width, const ItemType val = ItemType(0), bool enable_gpu = false);
     matrix (const std::vector<std::vector<ItemType>>& vals, bool enable_gpu = false);
     matrix (const ItemType** vals, const size_t& height, const size_t& width, bool enable_gpu = false);
 #else
-    matrix (const size_t& height, const size_t& width, const ItemType& val = ItemType(0));
+    matrix();//matrix(0, 0)
+    matrix (const size_t& height, const size_t& width, const ItemType val = ItemType(0));
     matrix (const std::vector<std::vector<ItemType>>& vals);
     matrix (const ItemType** vals, const size_t& height, const size_t& width);
 #endif
@@ -67,7 +69,7 @@ public:
     size_t getWidth() const;
     bool isSquare() const;
 
-    matrix<ItemType>& resize (size_t height, size_t width, ItemType& val = ItemType(0));
+    matrix<ItemType>& resize (size_t height, size_t width, ItemType val = ItemType(0));
     matrix<ItemType> subMatrix (size_t y, size_t x, size_t h, size_t w);
     matrix<ItemType>& copy(size_t y, size_t x, matrix<ItemType>);//coordinates are position to copy into in order to copy a smaller matrix into a select part
 
@@ -115,7 +117,7 @@ public:
     matrix<ItemType>& transpose();
     matrix<ItemType>& inverse();
 
-    matrix<ItemType>& map(ItemType (*func) (ItemType&)); //map a function via the cpu
+    matrix<ItemType>& map(ItemType (*func) (ItemType&), bool asynchronus = false); //map a function via the cpu
 
     //I don't think I can actually template the gpu maps... we'll cross that bridge later
     //spatial map, like a mask? hmmmm... probably is something i should have

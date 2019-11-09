@@ -28,7 +28,7 @@ using namespace LinAlgo;
 */
 #ifndef DONT_USE_GPU
 template <class ItemType>
-matrix<ItemType>::matrix (const size_t& height, const size_t& width, const ItemType& val, bool enable_gpu) : m_height (height), m_width (width), m_useGPU (enable_gpu),
+matrix<ItemType>::matrix (const size_t& height, const size_t& width, const ItemType val, bool enable_gpu) : m_height (height), m_width (width), m_useGPU (enable_gpu),
     m_gpuUpToDate (false), m_gpuData (NULL), m_gpuHeight (NULL), m_leaveOnGPU(false),
     m_gpuWidth (NULL), m_command_queue (NULL), m_gpuSlicesUpToDate (height, false) {
     m_data.resize (m_height);
@@ -39,7 +39,7 @@ matrix<ItemType>::matrix (const size_t& height, const size_t& width, const ItemT
 }
 #else
 template <class ItemType>
-matrix<ItemType>::matrix (const size_t& height, const size_t& width, const ItemType& val) : m_height (height), m_width (width) {
+matrix<ItemType>::matrix (const size_t& height, const size_t& width, const ItemType val) : m_height (height), m_width (width) {
     m_data.resize (m_height);
     for (size_t i = 0; i < m_height; i++) {
         m_data[i].resize(m_width, val);
@@ -498,7 +498,7 @@ ItemType matrix<ItemType>::trace() {
 * @param[val] If the matrix is being expanded, val will be used to fill the void
 */
 template <class ItemType>
-matrix<ItemType>& matrix<ItemType>::resize (size_t height, size_t width, ItemType& val) {
+matrix<ItemType>& matrix<ItemType>::resize (size_t height, size_t width, ItemType val) {
     if (m_height != height) {
         m_data.resize (height);
 #ifndef DONT_USE_GPU
@@ -612,7 +612,7 @@ matrix<ItemType>::iterator<const ItemType> matrix<ItemType>::cbegin() {
 */
 template <class ItemType>
 matrix<ItemType>::iterator<const ItemType> matrix<ItemType>::cend() {
-    return iterator<const ItemType>(m_width * m_height - 1, 0, m_width * m_height - 1, m_width, &m_data);
+    return iterator<const ItemType>(m_width * m_height - 1, 0, m_width * m_height, m_width, &m_data);
 }
 
 /**
@@ -628,7 +628,7 @@ matrix<ItemType>::iterator<ItemType> matrix<ItemType>::begin() {
 */
 template <class ItemType>
 matrix<ItemType>::iterator<ItemType> matrix<ItemType>::end() {
-    return iterator<ItemType>(m_width * m_height - 1, 0, m_width * m_height - 1, m_width, &m_data);
+    return iterator<ItemType>(m_width * m_height - 1, 0, m_width * m_height, m_width, &m_data);
 }
 
 #ifndef DONT_USE_GPU
@@ -1575,10 +1575,58 @@ matrix<ItemType>& matrix<ItemType>::transpose() {
 #pragma endregion
 
 template <class ItemType>
-matrix<ItemType>& matrix<ItemType>::map(ItemType (*func)(ItemType&)) {
-    for (size_t i = 0; i < m_height; i++) {
-        for (size_t j = 0; j < m_width; j++) {
-            m_data[i][j] = func(m_data[i][j]);
+matrix<ItemType>& matrix<ItemType>::map(ItemType (*func)(ItemType&), bool asynchronus) {
+    if (!asynchronus) {
+        for (size_t i = 0; i < m_height; i++) {
+            for (size_t j = 0; j < m_width; j++) {
+                m_data[i][j] = func(m_data[i][j]);
+            }
+        }
+    } else {
+        auto thread_func = [&](ItemType* item){
+            *item = func(*item);
+        };
+        std::vector<std::thread> pool;//this should be a bit smarter
+        int default_pool_size = std::thread::hardware_concurrency() * 2;
+        if (default_pool_size == 0) {
+            default_pool_size = 4;
+        }
+        int num_vals = m_height * m_width;
+        if (num_vals < default_pool_size) {
+            default_pool_size = num_vals;
+            pool.reserve(default_pool_size);
+        } else {
+            pool.reserve(default_pool_size);
+        }
+        int start_index = 0;
+        for (auto iter = this->begin(); start_index < default_pool_size; start_index++) {
+            std::thread th (thread_func, &iter[start_index]);
+            pool.push_back (std::move (th));
+        }
+        if (num_vals > default_pool_size) {
+            bool first = true;
+            for (size_t i = start_index / m_width; i < m_height; i++) {
+                for (size_t j = first ? start_index % m_width : 0; j < m_width; j++) {
+                    bool waiting = true;
+                    while (waiting) {
+                        for (auto t1 = pool.begin(); t1 < pool.end(); t1++) {
+                            if (t1->joinable()) {
+                                std::thread t2 (thread_func, &m_data[i][j]);
+                                t1->swap (t2);
+                                t2.detach();
+                                waiting = false;
+                                break;
+                            }
+                        }
+                    }
+                }
+                first = false;
+            }
+        }
+        for (auto t = pool.begin(); t < pool.end(); t++) {
+            if (t->joinable()) {
+                t->join();
+            }
         }
     }
     return *this;
