@@ -32,9 +32,9 @@ public:
 #ifndef DONT_USE_GPU
     //maybe have one that doesn't initialize m_data. Like a "leave on gpu" from the very start? just to make initializing a little faster in situations that need it
     matrix();//no allocating space or copying, meant for transferring over gpu data only
-    matrix (const size_t& height, const size_t& width, const ItemType val = ItemType(0), bool enable_gpu = false);
-    matrix (const std::vector<std::vector<ItemType>>& vals, bool enable_gpu = false);
-    matrix (const ItemType** vals, const size_t& height, const size_t& width, bool enable_gpu = false);
+    matrix (const size_t& height, const size_t& width, const ItemType val = ItemType(0));
+    matrix (const std::vector<std::vector<ItemType>>& vals);
+    matrix (const ItemType** vals, const size_t& height, const size_t& width);
 #else
     matrix();//matrix(0, 0)
     matrix (const size_t& height, const size_t& width, const ItemType val = ItemType(0));
@@ -117,7 +117,7 @@ public:
     matrix<ItemType>& transpose();
     matrix<ItemType>& inverse();
 
-    matrix<ItemType>& map(ItemType (*func) (ItemType&), bool asynchronus = false); //map a function via the cpu
+    matrix<ItemType>& map(ItemType (*func) (ItemType&), bool asynchronus = false, size_t thread_count = 0); //map a function via the cpu
 
     //I don't think I can actually template the gpu maps... we'll cross that bridge later
     //spatial map, like a mask? hmmmm... probably is something i should have
@@ -135,7 +135,8 @@ public:
     matrix<ItemType> reducedRowEchelon();//rre
 
     //friends and operators
-    std::vector<ItemType>& operator[] (size_t y) const;
+    const std::vector<ItemType>& operator[] (size_t y) const;
+    std::vector<ItemType>& operator[] (size_t y);
     template <class ArgType>
     matrix<ItemType>& operator= (const matrix<ArgType>& M);
     matrix<ItemType>& operator= (const matrix<ItemType>& M);
@@ -359,6 +360,7 @@ private:
     std::vector<ItemType> m_eigenValues;//another for vectors?
 
 #ifndef DONT_USE_GPU
+    bool m_dataInitialized;
 //are things up to date?
     bool m_gpuUpToDate;//this may grow to be a pain to manage later... and it may be better to track the validity of individual bits of data/rows/etc so that whole matrices down't get pushed each time
 #endif

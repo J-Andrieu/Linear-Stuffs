@@ -106,6 +106,34 @@ int main (int argc, char* argv[]) {
         if(params.accuracy_test || params.all) {
             CheckAccuracy(HEIGHT, WIDTH, params.log_file, params.verbose);
         }
+
+        printf("Testing chained additions\n");
+        LinAlgo::matrix<int> M1(500, 500, 1);
+        LinAlgo::matrix<int> M2(500, 500, 1);
+        M2.useGPU(true);
+        M2.leaveDataOnGPU(false);
+        LinAlgo::matrix<int> M3(500, 500, 1);
+        M3.useGPU(true);
+        M3.leaveDataOnGPU(true);
+        Timer t1;
+        for (int i = 0; i < 15; i++) {
+            M1 = std::move(M1 * M1);
+        }
+        printf("Finished CPU only chained multiplication after %d milliseconds\n", (int) t1.getMicrosecondsElapsed() / 1000);
+        Timer t2;
+        for (int i = 0; i < 15; i++) {
+            M2 = std::move(M2 * M2);
+        }
+        printf("Finished GPU chained multiplication with data pull after %d milliseconds\n", (int) t2.getMicrosecondsElapsed() / 1000);
+        Timer t3;
+        //it looks like clCreateCommandQueue has a memory leak on amd drivers, and /that's/ why this crashes... not sure tho.
+        for (int i = 0; i < 15; i++) {
+            M3 = std::move(M3 * M3);
+        }
+        M3.pullData();
+        printf("Finished GPU chained multiplication with leaveData active after %d milliseconds\n", (int) t3.getMicrosecondsElapsed() / 1000);
+        printf("Pull each time is %saccurate\n", M2 == M1 ? "" : "not ");
+        printf("LeaveOnGPU is %saccurate\n", M3 == M1 ? "" : "not ");
 /**
         printf("Testing asynchronous map function\n");
         char (*threading_test)(char&) = [](char& doot) -> char {
@@ -198,8 +226,9 @@ size_t testGPUvsCPUSpeed(std::ofstream& log, bool verbose, std::string test) {
         if (verbose) {
             std::cout << "Trying " << dim << "x" << dim << " matrix..." << std::endl;
         }
-        gpuMatrix = LinAlgo::matrix<double>(dim, dim, 0, true);
-        cpuMatrix = LinAlgo::matrix<double>(dim, dim, 0, false);
+        gpuMatrix = LinAlgo::matrix<double>(dim, dim);
+        gpuMatrix.useGPU(true);
+        cpuMatrix = LinAlgo::matrix<double>(dim, dim);
         LinAlgo::matrix<double> junkResult(0, 0);
         for (auto i = gpuMatrix.begin(), j = cpuMatrix.begin(); i <= gpuMatrix.end(); i++, j++) {
             *i = static_cast<double>(rand());

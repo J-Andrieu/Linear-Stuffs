@@ -13,7 +13,9 @@ IF (NOT(OpenCL_FOUND))
 ENDIF(NOT(OpenCL_FOUND))
 
 IF(CMAKE_BUILD_TYPE MATCHES Debug)
-  SET(CMAKE_CXX_FLAGS "-fsanitize=address -ggdb ${CMAKE_CXX_FLAGS}")
+  #opencl and address sanitizer hate each other
+  #SET(CMAKE_CXX_FLAGS "-fsanitize=address -ggdb ${CMAKE_CXX_FLAGS}")
+  SET(CMAKE_XX_FLAGS "-ggdb ${CMAKE_CXX_FLAGS}")
   ADD_DEFINITIONS(-DDEBUG)
 ENDIF(CMAKE_BUILD_TYPE MATCHES Debug)
 
