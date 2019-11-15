@@ -107,7 +107,7 @@ int main (int argc, char* argv[]) {
             CheckAccuracy(HEIGHT, WIDTH, params.log_file, params.verbose);
         }
 
-        printf("Testing chained additions\n");
+        printf("Testing chained multiplications\n");
         LinAlgo::matrix<int> M1(500, 500, 1);
         LinAlgo::matrix<int> M2(500, 500, 1);
         M2.useGPU(true);
@@ -134,6 +134,46 @@ int main (int argc, char* argv[]) {
         printf("Finished GPU chained multiplication with leaveData active after %d milliseconds\n", (int) t3.getMicrosecondsElapsed() / 1000);
         printf("Pull each time is %saccurate\n", M2 == M1 ? "" : "not ");
         printf("LeaveOnGPU is %saccurate\n", M3 == M1 ? "" : "not ");
+
+        printf("Attempting QR Algorithm for finding eigenvalues of a matrix\n");
+        printf("The matrix is: \n");
+        LinAlgo::matrix<float> eigenattempt({{1, -3, 3}, {3, -5, 3}, {6, -6, 4}});
+        //LinAlgo::matrix<float> eigenattempt({//primes are so dang useful
+        //                                    {3, 5, 7, 11, 13},
+        //                                    {5, 7, 11, 13, 17},
+        //                                    {7, 11, 13, 17, 19},
+        //                                    {11, 13, 17, 19, 23},
+        //                                    {13, 17, 19, 23, 27}});
+        print_matrix<float>(eigenattempt);
+        printf("The resulting eigenvalues should be 4, -2, -2\n");
+        bool running;
+        LinAlgo::matrix<float> Q(0, 0), R(0, 0);
+        int i = 0;
+        auto epsilon_equal = [](const LinAlgo::matrix<float>& M1, const LinAlgo::matrix<float>& M2, float epsilon) -> bool {
+            float temp;
+            epsilon = std::abs(epsilon);
+            if (M1.getWidth() != M2.getHeight()) {
+                return false;
+            }
+            for (size_t i = 0; i < M1.getHeight(); i++) {
+                temp = std::abs(M1[i][i] - M2[i][i]);
+                if (temp > epsilon) {
+                    return false;
+                }
+            }
+            return true;
+        };
+        Timer eigen;
+        do {
+            LinAlgo::qr(eigenattempt, Q, R);
+            auto temp = std::move(R * Q);
+            if (epsilon_equal(eigenattempt, temp, 0.000001)) {
+                break;
+            }
+            eigenattempt = std::move(temp);
+            i++;
+        } while (i < 500);
+        printf("The calculated eigenvalues after %d milliseconds are: %f, %f, %f\n", eigen.getMicrosecondsElapsed() / 1000, eigenattempt[0][0], eigenattempt[1][1], eigenattempt[2][2]);
 /**
         printf("Testing asynchronous map function\n");
         char (*threading_test)(char&) = [](char& doot) -> char {

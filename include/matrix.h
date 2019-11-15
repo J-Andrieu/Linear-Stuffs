@@ -222,9 +222,10 @@ public:
         using pointer = ptr_type*;
         using reference = ptr_type&;
 
-        iterator(long int index, size_t _min, size_t _max, size_t _width, std::vector<std::vector<ItemType>>* _data) : m_index(index), m_min(_min), m_max(_max), mat_width(_width), mat_data(_data) {
+        iterator(long int index, size_t _min, size_t _max, size_t _width, const std::vector<std::vector<ItemType>>* _data) : m_index(index), m_min(_min), m_max(_max), mat_width(_width), mat_data(dynamic_cast<const std::vector<std::vector<ItemType>>*>(_data)) {
             //assert index between min and max
         }
+
         iterator(const iterator<ptr_type>& other) {
             m_index = other.m_index;
             m_min = other.m_min;
@@ -336,15 +337,15 @@ public:
         }
 
     private:
-        std::vector<std::vector<ItemType>>* mat_data;
+        const std::vector<std::vector<ItemType>>* mat_data;
         size_t mat_width;
         long int m_index;//so that can check negative index
         size_t m_min;
         size_t m_max;
     };
 
-    iterator<const ItemType> cbegin();
-    iterator<const ItemType> cend();
+    iterator<const ItemType> cbegin() const;
+    iterator<const ItemType> cend() const;
 
     iterator<ItemType> begin();
     iterator<ItemType> end();

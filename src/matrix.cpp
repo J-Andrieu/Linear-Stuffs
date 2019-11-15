@@ -636,7 +636,7 @@ matrix<ItemType> matrix<ItemType>::identity (size_t height, size_t width) {
 * @brief Returns a const interator at the frst element of the matrix
 */
 template <class ItemType>
-matrix<ItemType>::iterator<const ItemType> matrix<ItemType>::cbegin() {
+matrix<ItemType>::iterator<const ItemType> matrix<ItemType>::cbegin() const {
     return iterator<const ItemType>(0, 0, m_width * m_height - 1, m_width, &m_data);
 }
 
@@ -644,7 +644,7 @@ matrix<ItemType>::iterator<const ItemType> matrix<ItemType>::cbegin() {
 * @brief Returns a const interator at the last element of the matrix
 */
 template <class ItemType>
-matrix<ItemType>::iterator<const ItemType> matrix<ItemType>::cend() {
+matrix<ItemType>::iterator<const ItemType> matrix<ItemType>::cend() const {
     return iterator<const ItemType>(m_width * m_height - 1, 0, m_width * m_height, m_width, &m_data);
 }
 
