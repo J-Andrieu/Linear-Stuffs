@@ -186,7 +186,11 @@ matrix<ItemType>::matrix (const matrix<ArgType>& M) : m_useGPU (M.useGPU()), m_g
             m_data[i][j] = ItemType (M[i][j]);
         }
     }
-    m_dataInitialized = M.m_dataInitialized;
+    if (m_height != 0 && m_width != 0) {
+        m_dataInitialized = true;
+    } else {
+        m_dataInitialized = false;
+    }
     if (m_useGPU) {
         initQueue();
     }
@@ -417,6 +421,20 @@ bool matrix<ItemType>::useGPU() const {
 template <class ItemType>
 ItemType matrix<ItemType>::get (size_t y, size_t x) const  {
     return m_data[y][x];
+}
+
+template <class ItemType>
+std::vector<ItemType> matrix<ItemType>::getRow (size_t r) const  {
+    return m_data[r];
+}
+
+template <class ItemType>
+std::vector<ItemType> matrix<ItemType>::getColumn (size_t c) const  {
+    std::vector<ItemType> vec(m_height);
+    for (size_t i = 0; i < m_height; i++) {
+        vec[i] = m_data[i][c];
+    }
+    return vec;
 }
 
 /**

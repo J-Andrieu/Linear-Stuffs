@@ -73,8 +73,8 @@ public:
     matrix<ItemType> subMatrix (size_t y, size_t x, size_t h, size_t w);
     matrix<ItemType>& copy(size_t y, size_t x, matrix<ItemType>);//coordinates are position to copy into in order to copy a smaller matrix into a select part
 
-    std::vector<ItemType> getRow(size_t r);
-    std::vector<ItemType> getColumn(size_t c);
+    std::vector<ItemType> getRow(size_t r) const;
+    std::vector<ItemType> getColumn(size_t c) const;
 
     static matrix<ItemType> identity (size_t height, size_t width = 0); //can't have a width=0 matrix
 

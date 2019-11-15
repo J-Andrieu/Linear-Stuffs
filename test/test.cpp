@@ -116,18 +116,18 @@ int main (int argc, char* argv[]) {
         M3.useGPU(true);
         M3.leaveDataOnGPU(true);
         Timer t1;
-        for (int i = 0; i < 15; i++) {
+        for (int i = 0; i < 60; i++) {
             M1 = std::move(M1 * M1);
         }
         printf("Finished CPU only chained multiplication after %d milliseconds\n", (int) t1.getMicrosecondsElapsed() / 1000);
         Timer t2;
-        for (int i = 0; i < 15; i++) {
+        for (int i = 0; i < 60; i++) {
             M2 = std::move(M2 * M2);
         }
         printf("Finished GPU chained multiplication with data pull after %d milliseconds\n", (int) t2.getMicrosecondsElapsed() / 1000);
         Timer t3;
         //it looks like clCreateCommandQueue has a memory leak on amd drivers, and /that's/ why this crashes... not sure tho.
-        for (int i = 0; i < 15; i++) {
+        for (int i = 0; i < 60; i++) {
             M3 = std::move(M3 * M3);
         }
         M3.pullData();
@@ -138,6 +138,7 @@ int main (int argc, char* argv[]) {
         printf("Attempting QR Algorithm for finding eigenvalues of a matrix\n");
         printf("The matrix is: \n");
         LinAlgo::matrix<float> eigenattempt({{1, -3, 3}, {3, -5, 3}, {6, -6, 4}});
+        auto ogmatrix = eigenattempt;
         //LinAlgo::matrix<float> eigenattempt({//primes are so dang useful
         //                                    {3, 5, 7, 11, 13},
         //                                    {5, 7, 11, 13, 17},
@@ -148,6 +149,7 @@ int main (int argc, char* argv[]) {
         printf("The resulting eigenvalues should be 4, -2, -2\n");
         bool running;
         LinAlgo::matrix<float> Q(0, 0), R(0, 0);
+        LinAlgo::matrix<float> eigenvecs = LinAlgo::identityMatrix(ogmatrix.getWidth());
         int i = 0;
         auto epsilon_equal = [](const LinAlgo::matrix<float>& M1, const LinAlgo::matrix<float>& M2, float epsilon) -> bool {
             float temp;
@@ -165,6 +167,8 @@ int main (int argc, char* argv[]) {
         };
         Timer eigen;
         do {
+            LinAlgo::qr(ogmatrix * eigenvecs, Q, R);
+            eigenvecs = Q;
             LinAlgo::qr(eigenattempt, Q, R);
             auto temp = std::move(R * Q);
             if (epsilon_equal(eigenattempt, temp, 0.000001)) {
@@ -174,6 +178,19 @@ int main (int argc, char* argv[]) {
             i++;
         } while (i < 500);
         printf("The calculated eigenvalues after %d milliseconds are: %f, %f, %f\n", eigen.getMicrosecondsElapsed() / 1000, eigenattempt[0][0], eigenattempt[1][1], eigenattempt[2][2]);
+        printf("The eigenvector for [lambda]1 = %f is:\n", eigenattempt[0][0]);
+        print_matrix(LinAlgo::columnVector(eigenvecs.getColumn(0)));
+        auto vec = LinAlgo::columnVector<float>(eigenvecs.getColumn(0));
+        print_matrix(ogmatrix * vec);
+        print_matrix(LinAlgo::columnVector(eigenvecs.getColumn(0)) * eigenattempt[0][0]);
+        printf("The eigenvector for [lambda]2 = %f is:\n", eigenattempt[1][1]);
+        print_matrix(LinAlgo::columnVector(eigenvecs.getColumn(1)));
+        print_matrix(LinAlgo::columnVector(eigenvecs.getColumn(2)));
+        vec = LinAlgo::columnVector<float>(eigenvecs.getColumn(1));
+        auto vec2 = LinAlgo::columnVector<float>(eigenvecs.getColumn(2));
+        vec = vec + vec2;
+        print_matrix(ogmatrix * vec);
+        print_matrix(LinAlgo::columnVector(eigenvecs.getColumn(1)) * eigenattempt[1][1]);
 /**
         printf("Testing asynchronous map function\n");
         char (*threading_test)(char&) = [](char& doot) -> char {

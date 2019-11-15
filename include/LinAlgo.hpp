@@ -704,10 +704,6 @@ LinAlgo::matrix<ArgType> LinAlgo::map(LinAlgo::matrix<ItemType> &M, ArgType (*fu
 */
 template <class ItemType>
 bool LinAlgo::qr (const LinAlgo::matrix<ItemType>& M, matrix<ItemType>& Q, matrix<ItemType>& R) {
-    if (M.m_height != M.m_width) {
-        return false;
-    }
-
     matrix<ItemType> M_trans (transpose (M)); //can use for "vertical slices" of M
     Q = matrix<ItemType>(M.m_height, M.m_width);
     R = matrix<ItemType>(M.m_height, M.m_width, 0);
