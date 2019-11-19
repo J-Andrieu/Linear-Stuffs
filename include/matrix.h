@@ -31,7 +31,7 @@ public:
     //constructors
 #ifndef DONT_USE_GPU
     //maybe have one that doesn't initialize m_data. Like a "leave on gpu" from the very start? just to make initializing a little faster in situations that need it
-    matrix();//no allocating space or copying, meant for transferring over gpu data only
+    matrix ();//no allocating space or copying, meant for transferring over gpu data only
     matrix (const size_t& height, const size_t& width, const ItemType val = ItemType(0));
     matrix (const std::vector<std::vector<ItemType>>& vals);
     matrix (const ItemType** vals, const size_t& height, const size_t& width);
@@ -202,6 +202,10 @@ public:
 
     template <class ArgType>
     friend bool LinAlgo::qr (const matrix<ArgType>& M, matrix<ArgType>& Q, matrix<ArgType>& R);
+    template <class ArgType>
+    friend std::vector<ArgType> eigenvalues(matrix<ArgType>& M);
+    template <class ArgType>
+    friend std::vector<ArgType> eigenvalues(matrix<ArgType>& M, matrix<ItemType>& eigenvecs_out);
 
     template <class ArgType>
     friend matrix<ArgType> LinAlgo::gj (const matrix<ArgType>& M);

@@ -71,6 +71,10 @@ namespace LinAlgo {
 
     template <class ItemType>
     bool qr (const matrix<ItemType>& M, matrix<ItemType>& Q, matrix<ItemType>& R); //returns if it was successful i guess
+    template <class ItemType>
+    std::vector<ItemType> eigenvalues(matrix<ItemType>& M);//should these actually modify the matrix object by saving the vals/vecs?
+    template <class ItemType>
+    std::vector<ItemType> eigenvalues(matrix<ItemType>& M, matrix<ItemType>& eigenvecs_out);
 
     template <class ItemType>
     matrix<ItemType> gj (const matrix<ItemType>&); //Gauss-Jordan elimination
@@ -159,8 +163,27 @@ namespace LinAlgo {
     };
 
     static const char* getErrorString (cl_int error);
-
+#endif // DONT_USE_GPU
     namespace {
+        double EPSILON = 0.000001;
+
+        template <class ItemType>
+        bool epsilon_equal(const LinAlgo::matrix<ItemType>& M1, const LinAlgo::matrix<ItemType>& M2, double epsilon) {
+            ItemType temp;
+            epsilon = std::abs(epsilon);
+            if (M1.getWidth() != M2.getHeight()) {
+                return false;
+            }
+            for (size_t i = 0; i < M1.getHeight(); i++) {
+                temp = std::abs(M1[i][i] - M2[i][i]);
+                if (temp > epsilon) {
+                    return false;
+                }
+            }
+            return true;
+        };
+
+#ifndef DONT_USE_GPU
 //private functions
         //auxillary function for loading kernel files and returning a program
         cl_program create_program (std::string filename, cl_context context, cl_int* errcode_ret) {
@@ -257,8 +280,8 @@ namespace LinAlgo {
         cl_platform_id* m_platform_id = NULL;
         cl_device_id m_device_id = NULL;
         cl_context m_context = NULL;
+#endif // DONT_USE_GPU
     }
-#endif
 }
 
 #ifndef DONT_USE_GPU
@@ -728,6 +751,60 @@ bool LinAlgo::qr (const LinAlgo::matrix<ItemType>& M, matrix<ItemType>& Q, matri
     }
 
     return true;
+}
+
+template <class ItemType>
+std::vector<ItemType> LinAlgo::eigenvalues(LinAlgo::matrix<ItemType>& M) {
+    if (M.getDeterminant() == 0) {
+        return std::vector<ItemType>(0);
+    }
+    matrix<ItemType> Q(0, 0), R(0, 0);
+    matrix<ItemType> values_matrix(M);
+    matrix<ItemType> temp(0, 0);
+    int i = 0;
+    do {
+        qr(values_matrix, Q, R);
+        temp = std::move(R * Q);
+        if (epsilon_equal(values_matrix, temp, EPSILON)) {
+            break;
+        }
+        values_matrix = std::move(temp);
+        i++;
+    } while (i < 500);
+    std::vector<ItemType> vals;
+    vals.reserve(M.getWidth());
+    for (i = 0; i < vals.size(); i++) {
+        vals.push_back(values_matrix[i][i]);
+    }
+    return vals;
+}
+
+template <class ItemType>
+std::vector<ItemType> LinAlgo::eigenvalues(LinAlgo::matrix<ItemType>& M, LinAlgo::matrix<ItemType>& eigenvecs_out) {
+    if (M.getDeterminant() == 0) {
+        return std::vector<ItemType>(0);
+    }
+    eigenvecs_out = std::move(identityMatrix(M.getWidth()));
+    matrix<ItemType> Q(0, 0), R(0, 0);
+    matrix<ItemType> values_matrix(M);
+    matrix<ItemType> temp(0, 0);
+    int i = 0;
+    do {
+        qr(values_matrix, Q, R);
+        temp = std::move(R * Q);
+        eigenvecs_out = std::move(eigenvecs_out * Q);
+        if (epsilon_equal(values_matrix, temp, EPSILON)) {
+            break;
+        }
+        values_matrix = std::move(temp);
+        i++;
+    } while (i < 500);
+    std::vector<ItemType> vals;
+    vals.reserve(values_matrix.getWidth());
+    for (i = 0; i < values_matrix.getWidth(); i++) {
+        vals.push_back(values_matrix[i][i]);
+    }
+    return vals;
 }
 
 /**

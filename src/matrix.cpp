@@ -15,6 +15,25 @@ using namespace LinAlgo;
 #pragma region Constructors and Destructors
 // <editor-fold desc="Constructors and Destructors">
 //{
+
+#ifndef DONT_USE_GPU
+template <class ItemType>
+matrix<ItemType>::matrix () : m_height (0), m_width (0), m_useGPU (ALL_USE_GPU),
+    m_gpuUpToDate (false), m_gpuData (NULL), m_gpuHeight (NULL), m_leaveOnGPU(false),
+    m_gpuWidth (NULL), m_command_queue (NULL), m_gpuSlicesUpToDate (0) {
+    m_dataInitialized = false;
+    m_upToDate = 0;
+    if (m_useGPU) {
+        initQueue();
+    }
+}
+#else
+template <class ItemType>
+matrix<ItemType>::matrix () : m_height (0), m_width () {
+
+}
+#endif
+
 /**
 * @brief This is the constructor for the matrix class.
 *
@@ -1657,9 +1676,11 @@ const std::vector<ItemType>& matrix<ItemType>::operator[] (size_t y) const {
 
 template <class ItemType>
 std::vector<ItemType>& matrix<ItemType>::operator[] (size_t y) {
+#ifndef DONT_USE_GPU
     m_gpuSlicesUpToDate[y] = false;
     m_gpuUpToDate = false;
     m_upToDate &= !(dataFlag::GPU_DATA);
+#endif // DONT_USE_GPU
     return (std::vector<ItemType>&) m_data[y];
 }
 
@@ -1821,7 +1842,11 @@ matrix<ItemType>& matrix<ItemType>::operator= (const matrix<ArgType>& M) {
         clReleaseMemObject (m_gpuWidth);
         m_gpuWidth = NULL;
     }
-    m_dataInitialized = M.m_dataInitialized;
+    if (m_width != 0 && m_height != 0) {
+        m_dataInitialized = true;
+    } else {
+        m_dataInitialized = false;
+    }
     if (m_useGPU) {
         initQueue();
     }

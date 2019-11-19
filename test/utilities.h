@@ -63,6 +63,49 @@ void print_matrix (const LinAlgo::matrix<ItemType>& M, int padding = -10) {
     }
 }
 
+template <class ItemType>
+LinAlgo::matrix<ItemType> generateShiftedPrimesMatrix(size_t height, size_t width = 0) {
+    if (width == 0) {
+        width = height;
+    }
+    long long unsigned int PRIME_TEST_THRESH = 10000000000;
+    std::vector<long long unsigned int> primes;
+    size_t num_primes = height + width;
+    primes.reserve(num_primes);
+    //if this ends up being slow i'll go ahead and make a seive
+    auto is_prime = [&](long long unsigned int N) {
+        if (N < PRIME_TEST_THRESH) {
+            for (size_t index = 1; index < primes.size(); index++) {
+                if (N % primes[index] == 0) {
+                    return false;
+                }
+            }
+        } else {
+            for (size_t index = 1; index < 20; index++) {
+                if (N % primes[index] == 0) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    };
+    primes.push_back(2);
+    primes.push_back(3);
+    for (long long unsigned int i = 5, j = 2; j < num_primes; i += 2) {
+        if (is_prime(i)) {
+            primes.push_back(i);
+            j++;
+        }
+    }
+    LinAlgo::matrix<ItemType> ret(height, width);
+    for (size_t i = 0; i < height; i++) {
+        for (size_t j = 0; j < width; j++) {
+            ret[i][j] = ItemType(primes[j + i]);
+        }
+    }
+    return ret;
+}
+
 #ifndef DONT_USE_GPU
 template <class ItemType>
 std::tuple<size_t, size_t, ItemType, ItemType> locateError(const LinAlgo::matrix<ItemType>& M1, const LinAlgo::matrix<ItemType>& M2) {

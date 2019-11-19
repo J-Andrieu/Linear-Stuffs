@@ -107,6 +107,7 @@ int main (int argc, char* argv[]) {
             CheckAccuracy(HEIGHT, WIDTH, params.log_file, params.verbose);
         }
 
+#ifndef DONT_USE_GPU
         printf("Testing chained multiplications\n");
         LinAlgo::matrix<int> M1(500, 500, 1);
         LinAlgo::matrix<int> M2(500, 500, 1);
@@ -134,63 +135,43 @@ int main (int argc, char* argv[]) {
         printf("Finished GPU chained multiplication with leaveData active after %d milliseconds\n", (int) t3.getMicrosecondsElapsed() / 1000);
         printf("Pull each time is %saccurate\n", M2 == M1 ? "" : "not ");
         printf("LeaveOnGPU is %saccurate\n", M3 == M1 ? "" : "not ");
+#endif // DONT_USE_GPU
 
         printf("Attempting QR Algorithm for finding eigenvalues of a matrix\n");
         printf("The matrix is: \n");
-        LinAlgo::matrix<float> eigenattempt({{1, -3, 3}, {3, -5, 3}, {6, -6, 4}});
-        auto ogmatrix = eigenattempt;
+        //LinAlgo::matrix<float> eigenattempt({{1, -3, 3}, {3, -5, 3}, {6, -6, 4}});
         //LinAlgo::matrix<float> eigenattempt({//primes are so dang useful
         //                                    {3, 5, 7, 11, 13},
         //                                    {5, 7, 11, 13, 17},
         //                                    {7, 11, 13, 17, 19},
         //                                    {11, 13, 17, 19, 23},
         //                                    {13, 17, 19, 23, 27}});
+        LinAlgo::matrix<float> eigenattempt = generateShiftedPrimesMatrix<float>(3);
         print_matrix<float>(eigenattempt);
-        printf("The resulting eigenvalues should be 4, -2, -2\n");
-        bool running;
-        LinAlgo::matrix<float> Q(0, 0), R(0, 0);
-        LinAlgo::matrix<float> eigenvecs = LinAlgo::identityMatrix(ogmatrix.getWidth());
-        int i = 0;
-        auto epsilon_equal = [](const LinAlgo::matrix<float>& M1, const LinAlgo::matrix<float>& M2, float epsilon) -> bool {
-            float temp;
-            epsilon = std::abs(epsilon);
-            if (M1.getWidth() != M2.getHeight()) {
-                return false;
-            }
-            for (size_t i = 0; i < M1.getHeight(); i++) {
-                temp = std::abs(M1[i][i] - M2[i][i]);
-                if (temp > epsilon) {
-                    return false;
-                }
-            }
-            return true;
-        };
+        eigenattempt.getDeterminant();
+        //printf("The resulting eigenvalues should be 4, -2, -2\n");
+        LinAlgo::matrix<float> eigenvecs;
         Timer eigen;
-        do {
-            LinAlgo::qr(ogmatrix * eigenvecs, Q, R);
-            eigenvecs = Q;
-            LinAlgo::qr(eigenattempt, Q, R);
-            auto temp = std::move(R * Q);
-            if (epsilon_equal(eigenattempt, temp, 0.000001)) {
-                break;
+        std::vector<float> eigenvals = LinAlgo::eigenvalues(eigenattempt, eigenvecs);
+        printf("The calculated eigenvalues after %d microseconds are: ", eigen.getMicrosecondsElapsed());
+        {
+            auto v = eigenvals.begin();
+            std::cout << *v;
+            for (v++; v < eigenvals.end(); v++) {
+                std::cout << ", " << *v;
             }
-            eigenattempt = std::move(temp);
-            i++;
-        } while (i < 500);
-        printf("The calculated eigenvalues after %d milliseconds are: %f, %f, %f\n", eigen.getMicrosecondsElapsed() / 1000, eigenattempt[0][0], eigenattempt[1][1], eigenattempt[2][2]);
-        printf("The eigenvector for [lambda]1 = %f is:\n", eigenattempt[0][0]);
-        print_matrix(LinAlgo::columnVector(eigenvecs.getColumn(0)));
-        auto vec = LinAlgo::columnVector<float>(eigenvecs.getColumn(0));
-        print_matrix(ogmatrix * vec);
-        print_matrix(LinAlgo::columnVector(eigenvecs.getColumn(0)) * eigenattempt[0][0]);
-        printf("The eigenvector for [lambda]2 = %f is:\n", eigenattempt[1][1]);
-        print_matrix(LinAlgo::columnVector(eigenvecs.getColumn(1)));
-        print_matrix(LinAlgo::columnVector(eigenvecs.getColumn(2)));
-        vec = LinAlgo::columnVector<float>(eigenvecs.getColumn(1));
-        auto vec2 = LinAlgo::columnVector<float>(eigenvecs.getColumn(2));
-        vec = vec + vec2;
-        print_matrix(ogmatrix * vec);
-        print_matrix(LinAlgo::columnVector(eigenvecs.getColumn(1)) * eigenattempt[1][1]);
+            std::cout << std::endl;
+        }
+        for (int i = 0; i < eigenvals.size(); i++) {
+            printf("The eigenvector for [lambda]%d = %f is:\n", i + 1, eigenvals[i]);
+            LinAlgo::matrix<float> eigenvec = LinAlgo::columnVector(eigenvecs.getColumn(i));
+            print_matrix(eigenvec);
+            printf("The matrix acting on the vector is:\n");
+            print_matrix(eigenattempt * eigenvec);
+            printf("The vector multiplied by [lambda]%d is:\n", i + 1);
+            print_matrix(eigenvec * eigenvals[i]);
+        }
+
 /**
         printf("Testing asynchronous map function\n");
         char (*threading_test)(char&) = [](char& doot) -> char {
