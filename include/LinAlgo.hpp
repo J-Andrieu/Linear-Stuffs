@@ -598,7 +598,7 @@ static bool LinAlgo::BreakDownGPU() {
 *
 * @return True if successful, false if the GPU is not yet initialized
 *
-* @notes If a matrix stores a non-basic type, then the operation will not be performed
+* @note If a matrix stores a non-basic type, then the operation will not be performed
 */
 static bool LinAlgo::AllUseGPU (bool use_it) {
     if (GPU_INITIALIZED) {
@@ -608,6 +608,9 @@ static bool LinAlgo::AllUseGPU (bool use_it) {
     return false;
 }
 
+/**
+* @brief returns if the GPU is initialized
+*/
 static bool LinAlgo::IsGPUInitialized() {
     return GPU_INITIALIZED;
 }
@@ -665,7 +668,7 @@ LinAlgo::matrix<ItemType> LinAlgo::transpose (const LinAlgo::matrix<ItemType>& M
 /**
 * @brief Non-overwriting matrix inverse
 *
-* @detail Uses gauss-jordan elimination after a threshold to maintain efficiency
+* @detail Uses gauss-jordan elimination to calculate the inverse
 */
 template <class ItemType>
 LinAlgo::matrix<ItemType> LinAlgo::inverse (matrix<ItemType>& M) { //would be const, but matrix::getDeterminant() sets the determinant if it isn't already
@@ -707,23 +710,93 @@ LinAlgo::matrix<ItemType> LinAlgo::inverse (matrix<ItemType>& M) { //would be co
     }
 }
 
+/**
+* @brief Maps a provided function to all values in a matrix
+*
+* @param M The matrix containing the input
+*
+* @param func The function to map to all values in the matrix
+*
+* @return A matrix containing the result of executing func on every value in the matrix
+*/
 template <class ItemType, class ArgType>
-LinAlgo::matrix<ArgType> LinAlgo::map(LinAlgo::matrix<ItemType> &M, ArgType (*func)(ItemType&)) {
+LinAlgo::matrix<ArgType> LinAlgo::map(LinAlgo::matrix<ItemType> &M, ArgType (*func)(ItemType&), bool ) {
 	matrix<ArgType> ret(M.getHeight(), M.getWidth());
-	//all the extras that need to be copied (gpu setup)
-	for (size_t i = 0; i < M.getHeight(); i++) {
-		for (size_t j = 0; j < M.getWidth(); j++) {
-			ret[i][j] = func(M[i][j]);
-		}
+	ret.useGPU(M.useGPU());
+	bool leave_data = false;
+	if (M.leaveOnGPU()) {
+        M.pullData();
+        leave_data = true;
 	}
-	return ret;
+	if (!asynchronus) {
+        for (size_t i = 0; i < m_height; i++) {
+            for (size_t j = 0; j < m_width; j++) {
+                ret[i][j] = func(M[i][j]);
+            }
+        }
+    } else {
+        auto thread_func = [&](ItemType* dest, ItemType& val){
+            *dest = func(val);
+        };
+        std::vector<std::thread> pool;
+        int default_pool_size;
+        if (thread_count == 0) {
+            default_pool_size = std::thread::hardware_concurrency() * 2;
+        } else {
+            default_pool_size = thread_count;
+        }
+        if (default_pool_size == 0) {
+            default_pool_size = 4;
+        }
+        int num_vals = M.getHeight() * M.getWidth();
+        if (num_vals < default_pool_size) {
+            default_pool_size = num_vals;
+            pool.reserve(default_pool_size);
+        } else {
+            pool.reserve(default_pool_size);
+        }
+        int start_index = 0;
+        for (auto iter1 = ret.begin(), iter2 = M.begin(); start_index < default_pool_size; start_index++) {
+            std::thread th (thread_func, &iter[start_index], iter2[start_index]);
+            pool.push_back (std::move (th));
+        }
+        if (num_vals > default_pool_size) {
+            bool first = true;
+            for (size_t i = start_index / M.getWidth(); i < M.getHeight(); i++) {
+                for (size_t j = first ? start_index % M.getWidth() : 0; j < M.getWidth(); j++) {
+                    bool waiting = true;
+                    while (waiting) {
+                        for (auto t1 = pool.begin(); t1 < pool.end(); t1++) {
+                            if (t1->joinable()) {
+                                std::thread t2 (thread_func, &ret[i][j], M[i][j]);
+                                t1->swap (t2);
+                                t2.detach();
+                                waiting = false;
+                                break;
+                            }
+                        }
+                    }
+                }
+                first = false;
+            }
+        }
+        for (auto t = pool.begin(); t < pool.end(); t++) {
+            if (t->joinable()) {
+                t->join();
+            }
+        }
+    }
+    if (leave_data) {
+        ret.pushData();
+        ret.leaveDataOnGPU(true);
+    }
+    return ret;
 }
 
 /**
 * @brief QR decomposition
 *
-* @detail V1 uses the Graham-Schmidt method for QR factorization
-*
+* @note V1 uses the Graham-Schmidt method for QR factorization
 */
 template <class ItemType>
 bool LinAlgo::qr (const LinAlgo::matrix<ItemType>& M, matrix<ItemType>& Q, matrix<ItemType>& R) {
@@ -753,6 +826,12 @@ bool LinAlgo::qr (const LinAlgo::matrix<ItemType>& M, matrix<ItemType>& Q, matri
     return true;
 }
 
+/**
+* @brief Calculates the eigenvalues of a given matrix
+*
+* @note returns an empty std::vector if the matrix isn't invertible.
+* This function uses the QR Algorithm to calculate eigenvalues.
+*/
 template <class ItemType>
 std::vector<ItemType> LinAlgo::eigenvalues(LinAlgo::matrix<ItemType>& M) {
     if (M.getDeterminant() == 0) {
@@ -779,6 +858,13 @@ std::vector<ItemType> LinAlgo::eigenvalues(LinAlgo::matrix<ItemType>& M) {
     return vals;
 }
 
+/**
+* @brief Calculates the eigenvalues and eigenvectors of a given matrix
+*
+* @note returns an empty std::vector if the matrix isn't invertible.
+* This function uses the mildly extended QR Algorithm to calculate
+* eigenvalues and eigenvectors.
+*/
 template <class ItemType>
 std::vector<ItemType> LinAlgo::eigenvalues(LinAlgo::matrix<ItemType>& M, LinAlgo::matrix<ItemType>& eigenvecs_out) {
     if (M.getDeterminant() == 0) {

@@ -16,6 +16,11 @@ using namespace LinAlgo;
 // <editor-fold desc="Constructors and Destructors">
 //{
 
+/**
+* @brief This is the default constructor for the matrix class.
+*
+* @details Creates an empty 0x0 matrix of the specified type.
+*/
 #ifndef DONT_USE_GPU
 template <class ItemType>
 matrix<ItemType>::matrix () : m_height (0), m_width (0), m_useGPU (ALL_USE_GPU),
@@ -23,15 +28,10 @@ matrix<ItemType>::matrix () : m_height (0), m_width (0), m_useGPU (ALL_USE_GPU),
     m_gpuWidth (NULL), m_command_queue (NULL), m_gpuSlicesUpToDate (0) {
     m_dataInitialized = false;
     m_upToDate = 0;
-    if (m_useGPU) {
-        initQueue();
-    }
 }
 #else
 template <class ItemType>
-matrix<ItemType>::matrix () : m_height (0), m_width () {
-
-}
+matrix<ItemType>::matrix () : m_height (0), m_width (0) {}
 #endif
 
 /**
@@ -39,11 +39,9 @@ matrix<ItemType>::matrix () : m_height (0), m_width () {
 *
 * @details Creates the desired mxn matrix of the template-specified data type.
 *
-* @param[height] The desired height of the matrix
+* @param height The desired height of the matrix
 *
-* @param[width] The desired width of the matrix
-*
-* @param[enable_gpu] Whether the matrix should attempt to use the GPU to make computations. Defaults to false.
+* @param width The desired width of the matrix
 */
 #ifndef DONT_USE_GPU
 template <class ItemType>
@@ -81,9 +79,7 @@ matrix<ItemType>::matrix (const size_t& height, const size_t& width, const ItemT
 * lists aren't all the same size, then the width will be the widest list,
 * and 0 will be assigned to all empty locations
 *
-* @param[vals] The vector of vectors to be turned into a matrix
-*
-* @param[enable_gpu] Whether or not the gpu should be enabled for this matrix
+* @param vals The vector of vectors to be turned into a matrix
 */
 #ifndef DONT_USE_GPU
 template <class ItemType>
@@ -137,13 +133,11 @@ matrix<ItemType>::matrix (const std::vector<std::vector<ItemType>>& vals) {
 *
 * @detail Allows you to create a matrix from a pointer to a 2D array of values
 *
-* @param[vals] The 2D array of values to be turned into a matrix
+* @param vals The 2D array of values to be turned into a matrix
 *
-* @param[height] Height of the provided data
+* @param height Height of the provided data
 *
-* @param[width] Width of the provided data
-*
-* @param[enable_gpu] Whether or not the gpu should be enabled for this matrix
+* @param width Width of the provided data
 */
 #ifndef DONT_USE_GPU
 template <class ItemType>
@@ -182,7 +176,7 @@ matrix<ItemType>::matrix (const ItemType** vals, const size_t& height, const siz
 * @details This constructor will copy the height, width, and data. It also copies whether or not
 * it should use the gpu. This onstructor is only called when it needs to convert matrix types
 *
-* @param[M] This is the matrix to be copied
+* @param M This is the matrix to be copied
 */
 #ifndef DONT_USE_GPU
 template <class ItemType>
@@ -236,7 +230,7 @@ matrix<ItemType>::matrix (const matrix<ArgType>& M) {
 * @details This constructor will copy the height, width, and data. It also copies whether or not
 * it should use the gpu.
 *
-* @param[M] This is the matrix to be copied
+* @param M This is the matrix to be copied
 */
 #ifndef DONT_USE_GPU
 template <class ItemType>
@@ -277,7 +271,7 @@ matrix<ItemType>::matrix (const matrix<ItemType>& M) : m_data (M.m_height) {
 /**
 * @brief This is the move constructor for the matrix class
 *
-* @param[M] This is the matrix to be moved
+* @param M This is the matrix to be moved
 */
 #ifndef DONT_USE_GPU
 template <class ItemType>
@@ -308,8 +302,6 @@ matrix<ItemType>::matrix (matrix<ItemType>&& M) {
 * @brief matrix destructor
 *
 * @detail Mostly just here to clean up any gpu data lyin' about
-*
-* @note Work in progress
 */
 template <class ItemType>
 matrix<ItemType>::~matrix() {
@@ -338,7 +330,7 @@ matrix<ItemType>::~matrix() {
 /**
 * @brief Fills the matrix with the provided value
 *
-* @param[val] The value to fill the matrix with
+* @param val The value to fill the matrix with
 */
 template <class ItemType>
 void matrix<ItemType>::fill (ItemType val) {
@@ -384,32 +376,34 @@ bool matrix<ItemType>::useGPU (bool use_it) {
     if (GPU_INITIALIZED) {
         m_useGPU = use_it;
         if (!m_useGPU) {
-            if (m_command_queue) {
-                clReleaseCommandQueue (m_command_queue);
-                m_command_queue = NULL;
+            if (m_leaveOnGPU) {
+                pullFromGPU(m_command_queue);
+                m_leaveOnGPU = false;
             }
-            if (m_gpuData) {
-                clReleaseMemObject (m_gpuData);
-                m_gpuData = NULL;
-            }
-            if (m_gpuHeight || m_gpuWidth) {
-                clReleaseMemObject (m_gpuHeight);
-                clReleaseMemObject (m_gpuWidth);
-                m_gpuHeight = NULL;
-                m_gpuWidth = NULL;
-            }
-            m_gpuUpToDate = false;
-            m_gpuSlicesUpToDate.clear();
-            m_gpuSlicesUpToDate.resize (m_height, false);
-            m_upToDate |= ! (dataFlag::GPU_HEIGHT | dataFlag::GPU_WIDTH | dataFlag::GPU_DATA);
+            //maybe this shouldn't just erase the gpu data
+            //if (m_command_queue) {
+            //    clReleaseCommandQueue (m_command_queue);
+            //    m_command_queue = NULL;
+            //}
+            //if (m_gpuData) {
+            //    clReleaseMemObject (m_gpuData);
+            //    m_gpuData = NULL;
+            //}
+            //if (m_gpuHeight || m_gpuWidth) {
+            //    clReleaseMemObject (m_gpuHeight);
+            //    clReleaseMemObject (m_gpuWidth);
+            //    m_gpuHeight = NULL;
+            //    m_gpuWidth = NULL;
+            //}
+            //m_gpuUpToDate = false;
+            //m_gpuSlicesUpToDate.clear();
+            //m_gpuSlicesUpToDate.resize (m_height, false);
+            //m_upToDate |= ! (dataFlag::GPU_HEIGHT | dataFlag::GPU_WIDTH | dataFlag::GPU_DATA);
         } else {
             if (m_command_queue == NULL) {
                 initQueue();
             }
         }
-        //if this is being set to true, pushing and calculating everything at once
-        //could take some time, so everything should get pushed when it's first needed
-        //... or i could make pushToGPU public? nah... an updateGPU() function. yes. that.
         return true;
     }
     return false;
@@ -433,20 +427,30 @@ bool matrix<ItemType>::useGPU() const {
 /**
 * @brief This function returns the value or object stored at the specified position.
 *
-* @param[y] The height of the position.
+* @param y The height of the position.
 *
-* @param[x] The width of the position.
+* @param x The width of the position.
 */
 template <class ItemType>
 ItemType matrix<ItemType>::get (size_t y, size_t x) const  {
     return m_data[y][x];
 }
 
+/**
+* @brief This function returns an std::vector of the requested row
+*
+* @param r The row to slice
+*/
 template <class ItemType>
 std::vector<ItemType> matrix<ItemType>::getRow (size_t r) const  {
     return m_data[r];
 }
 
+/**
+* @brief This function returns an std::vector of the requested column
+*
+* @param c The column to slice
+*/
 template <class ItemType>
 std::vector<ItemType> matrix<ItemType>::getColumn (size_t c) const  {
     std::vector<ItemType> vec(m_height);
@@ -459,11 +463,11 @@ std::vector<ItemType> matrix<ItemType>::getColumn (size_t c) const  {
 /**
 * @brief This function sets the specified location in the matrix to the specified value.
 *
-* @param[y] The height of the position.
+* @param y The height of the position.
 *
-* @param[x] The width of the position.
+* @param x The width of the position.
 *
-* @param[val] The value to be inserted to the position.
+* @param val The value to be inserted to the position.
 */
 template <class ItemType>
 void matrix<ItemType>::set (size_t y, size_t x, ItemType val) {
@@ -554,11 +558,11 @@ ItemType matrix<ItemType>::trace() {
 *
 * @detail This resizes the matrix to the given height and width.
 *
-* @param[height] The new height
+* @param height The new height
 *
-* @param[width] The new width
+* @param width The new width
 *
-* @param[val] If the matrix is being expanded, val will be used to fill the void
+* @param val If the matrix is being expanded, val will be used to fill the void
 */
 template <class ItemType>
 matrix<ItemType>& matrix<ItemType>::resize (size_t height, size_t width, ItemType val) {
@@ -602,11 +606,11 @@ matrix<ItemType>& matrix<ItemType>::resize (size_t height, size_t width, ItemTyp
 /**
 * @brief Copies provided matrix into the calling matrix starting at the specified index
 *
-* @param[y] The starting height
+* @param y The starting height
 *
-* @param[x] The starting width
+* @param x The starting width
 *
-* @param[M] The matrix to copy
+* @param M The matrix to copy
 */
 template <class ItemType>
 matrix<ItemType>& matrix<ItemType>::copy (size_t y, size_t x, matrix<ItemType> M) {
@@ -629,15 +633,15 @@ matrix<ItemType>& matrix<ItemType>::copy (size_t y, size_t x, matrix<ItemType> M
 /**
 * @brief Creates a new matrix from a subregion of the calling matrix
 *
-* @param[y] The row to start the slice
+* @param y The row to start the slice
 *
-* @param[x] The column to start the slice
+* @param x The column to start the slice
 *
-* @param[h] The height of the new matrix
+* @param h The height of the new matrix
 *
-* @param[w] The width of the new matrix
+* @param w The width of the new matrix
 *
-* @note If the requested region is out of bounds it will return a 0x0 matrix
+* @note If the requested region is out of bounds it will throw a runtime error
 */
 template <class ItemType>
 matrix<ItemType> matrix<ItemType>::subMatrix (size_t y, size_t x, size_t h, size_t w) {
@@ -763,7 +767,7 @@ bool matrix<ItemType>::pushData() {
 * @details If m_useGPU is true, then this function will attempt to use one of the available kernels to add the two matrices together.
 * GPU mode only works if they are the same type. GPU usage is determined by calling matrix and preserved through the returned matrix.
 *
-* @param[M] The matrix to be added to the calling matrix.
+* @param M The matrix to be added to the calling matrix.
 *
 * @return returns a matrix of the type of the calling matrix with the dimensions of the overlap between the matrices.
 */
@@ -844,7 +848,7 @@ matrix<ItemType> matrix<ItemType>::add (matrix<ArgType>& M) {
 /**
 * @brief Adds a single value to all elements in matrix.
 *
-* @param[val] The value to be added to the calling matrix.
+* @param val The value to be added to the calling matrix.
 */
 template <class ItemType>
 template <class ArgType>
@@ -934,7 +938,7 @@ matrix<ItemType> matrix<ItemType>::operator+ (const ArgType& val) {
 /**
 * @brief Subtracts two matrices.
 *
-* @param[M] The matrix to be subtracted from the calling matrix.
+* @param M The matrix to be subtracted from the calling matrix.
 *
 * @return returns a matrix of the type of the calling matrix with the dimensions of the overlap between the matrices.
 */
@@ -1015,7 +1019,7 @@ matrix<ItemType> matrix<ItemType>::subtract (matrix<ArgType>& M) {
 /**
 * @brief Subtracts a single value from all elements in matrix.
 *
-* @param[val] The value to be subtracted from the calling matrix.
+* @param val The value to be subtracted from the calling matrix.
 *
 * @return returns a matrix of the same type as the calling matrix.
 */
@@ -1110,7 +1114,7 @@ matrix<ItemType> matrix<ItemType>::operator- (const ArgType& val) {
 * @details If m_useGPU is true, then this function will attempt to use one of the available kernels to multiply the two matrices together.
 * GPU mode only works if they are the same type. GPU usage is determined by the calling matrix and is preserved through the returned matrix.
 *
-* @param[M] The rhs matrix for the multiplication.
+* @param M The rhs matrix for the multiplication.
 *
 * @return Returns the result of multiplying the two matrices together, of the same type as the calling matrix. Returned matrix is 0x0
 * if the matrices were of incompatible dimensions.
@@ -1199,7 +1203,7 @@ matrix<ItemType> matrix<ItemType>::multiply (matrix<ArgType>& M) {
 /**
 * @brief Multiplies each element by a single value.
 *
-* @param[val] The value to be multiplied through the calling matrix.
+* @param val The value to be multiplied through the calling matrix.
 *
 * @return returns a matrix of the same type as the calling matrix.
 */
@@ -1267,7 +1271,7 @@ matrix<ItemType> matrix<ItemType>::multiply (const ArgType& val) {
 /**
 * @brief Multiplies each element of the calling matrix by the corresponding element of the rhs matrix.
 *
-* @param[M] The rhs matrix for the multiplications.
+* @param M The rhs matrix for the multiplications.
 */
 template <class ItemType>
 template <class ArgType>
@@ -1395,7 +1399,7 @@ matrix<ItemType> matrix<ItemType>::divide(matrix<ArgType>& M) {
 /**
 * @brief Divides each element by a single value.
 *
-* @param[val] The value to divide the calling matrix by.
+* @param val The value to divide the calling matrix by.
 *
 * @return returns a matrix of the same type as the calling matrix.
 */
@@ -1463,7 +1467,7 @@ matrix<ItemType> matrix<ItemType>::divide (const ArgType& val) {
 /**
 * @brief Divides each element of the calling matrix by each element of the rhs matrix.
 *
-* @param[M] The rhs matrix for the divisions.
+* @param M The rhs matrix for the divisions.
 */
 template <class ItemType>
 template <class ArgType>
@@ -1594,6 +1598,18 @@ matrix<ItemType>& matrix<ItemType>::transpose() {
 // </editor-fold>
 #pragma endregion
 
+/**
+* @brief Maps a function to every value in the matrix
+*
+* @param func The function to map to every value of the matrix
+*
+* @param asynchronous If true, executes func using a thread pool. Defaults to false
+*
+* @param thread_count The number of threads to use if threading
+*
+* @note The thread count defaults to double the hardware concurrency. This will
+* overwrite the data in the matrix
+*/
 template <class ItemType>
 matrix<ItemType>& matrix<ItemType>::map(ItemType (*func)(ItemType&), bool asynchronus, size_t thread_count) {//maybe change async to int so user can  specify thread count for pool... or just add a default param
     if (!asynchronus) {
@@ -1663,9 +1679,9 @@ matrix<ItemType>& matrix<ItemType>::map(ItemType (*func)(ItemType&), bool asynch
 /**
 * @brief Using the [] operator will slice a row of the matrix.
 *
-* @param[y] The row to be sliced.
+* @param y The row to be sliced.
 *
-* @return A reference to the std::vector storing the appropriate row of the matrix. use with caution pls.
+* @return A const reference to the std::vector storing the appropriate row of the matrix.
 *
 * @note If m_leaveOnGPU is set, don't forget to retrieve data first and/or push data after
 */
@@ -1674,6 +1690,15 @@ const std::vector<ItemType>& matrix<ItemType>::operator[] (size_t y) const {
     return (const std::vector<ItemType>&) m_data[y];
 }
 
+/**
+* @brief Using the [] operator will slice a row of the matrix.
+*
+* @param y The row to be sliced.
+*
+* @return A reference to the std::vector storing the appropriate row of the matrix.
+*
+* @note If m_leaveOnGPU is set, don't forget to retrieve data first and/or push data after
+*/
 template <class ItemType>
 std::vector<ItemType>& matrix<ItemType>::operator[] (size_t y) {
 #ifndef DONT_USE_GPU
@@ -1687,7 +1712,7 @@ std::vector<ItemType>& matrix<ItemType>::operator[] (size_t y) {
 /**
 * @brief Assignment operator whoot
 *
-* @param[M] The matrix to be copied.
+* @param M The matrix to be copied.
 *
 * @return A reference to the lhs matrix.
 */
@@ -1793,7 +1818,7 @@ matrix<ItemType>& matrix<ItemType>::operator= (matrix<ItemType>&& M) {
 /**
 * @brief Assignment operator whoot
 *
-* @param[M] The matrix to be copied.
+* @param M The matrix to be copied.
 *
 * @return A reference to the lhs matrix.
 */
@@ -1911,6 +1936,13 @@ bool matrix<ItemType>::operator!= (const matrix<ArgType>& M) const {
 // <editor-fold desc="Initialization Functions">
 //{
 //private auxilliary function to initialize the OpenCL command queue
+
+/**
+* @brief This helper function initializes the OpenCL command queue for this matrix
+*
+* @note This function uses the OpenCL version foun during InitGPU() to determine
+* the appropriate command to create the queue
+*/
 template <class ItemType>
 cl_int matrix<ItemType>::initQueue() {
     if (m_command_queue != NULL) {
@@ -1929,7 +1961,11 @@ cl_int matrix<ItemType>::initQueue() {
     return ret;
 }
 
-//private auxialliary function for creating an empty memory buffer to store result
+/**
+* @brief Private auxialliary function for creating an empty memory buffer to store result
+*
+* @param command_queue A command queue to use for writing to the GPU
+*/
 template <class ItemType>
 cl_int matrix<ItemType>::createResultBuffer (cl_command_queue& command_queue) {
     if (m_gpuData != NULL || m_leaveOnGPU) {
@@ -1972,17 +2008,23 @@ cl_int matrix<ItemType>::createResultBuffer (cl_command_queue& command_queue) {
     return ret;
 }
 
-//private auxilliary function to push the matrix data to the gpu
+/**
+* @brief private auxilliary function to push the matrix data to the gpu
+*
+* @param command_queue The command queue to use for writing to the GPU
+*/
 template <class ItemType>
 cl_int matrix<ItemType>::pushToGPU (cl_command_queue& command_queue) {
     if (m_gpuUpToDate && !m_leaveOnGPU) {
         return CL_SUCCESS;
     }
 
+    //throw an error if someone tries to push when there's literally no data
     if (!m_dataInitialized) {
-        throw(std::runtime_error("Matrix data not initialized for push"));
+        throw(LinAlgo::gpu_exception(std::string("Matrix data not initialized for push"), __FILE__, __LINE__, -99));
     }
 
+    //create storage buffers if they for some reason don't exist
     cl_int ret;
     if (!m_gpuData || m_leaveOnGPU) {
         if (m_leaveOnGPU) {
@@ -2014,6 +2056,7 @@ cl_int matrix<ItemType>::pushToGPU (cl_command_queue& command_queue) {
         }
     }
 
+    //update matrix data
     if (! (m_upToDate & dataFlag::GPU_DATA) || m_leaveOnGPU) {
         for (size_t i = 0; i < m_height; i++) {
             if (!m_gpuSlicesUpToDate[i]) {
@@ -2027,6 +2070,7 @@ cl_int matrix<ItemType>::pushToGPU (cl_command_queue& command_queue) {
         m_upToDate |= dataFlag::GPU_DATA;
     }
 
+    //update height
     if (! (m_upToDate & dataFlag::GPU_HEIGHT) || m_leaveOnGPU) {
         ret = clEnqueueWriteBuffer (command_queue, m_gpuHeight, CL_FALSE, 0, sizeof (ItemType), &m_height, 0, NULL, NULL);
         if (ret != CL_SUCCESS) {
@@ -2048,7 +2092,11 @@ cl_int matrix<ItemType>::pushToGPU (cl_command_queue& command_queue) {
     return ret;
 }
 
-//private auxilliary function for retrieving data from the gpu
+/**
+* @brief private auxilliary function for retrieving data from the gpu
+*
+* @param command_queue The command queue to use for reading the buffers
+*/
 template <class ItemType>
 cl_int matrix<ItemType>::pullFromGPU (cl_command_queue& command_queue) {
     cl_int ret;
@@ -2084,7 +2132,11 @@ cl_int matrix<ItemType>::pullFromGPU (cl_command_queue& command_queue) {
 #pragma region Functions for Executing Kernels
 // <editor-fold desc="Functions for Executing Kernels">
 //{
-//Private function for executing the add kernel
+/**
+* @brief Private function for executing the add kernel
+*
+* @note Can be used for any kernel acting on two matrices w/ the same number of elements
+*/
 template <class ItemType>
 cl_int matrix<ItemType>::execute_add_kernel (cl_kernel kernel, matrix<ItemType>& rhs, matrix<ItemType>& result) {
     cl_int ret;
@@ -2133,7 +2185,11 @@ cl_int matrix<ItemType>::execute_add_kernel (cl_kernel kernel, matrix<ItemType>&
     return ret;
 }
 
-//function for executing the multiplication kernel
+/**
+* @brief function for executing the multiplication kernel
+*
+* @note This could just be the execute_add_kernel tbh
+*/
 template <class ItemType>
 cl_int matrix<ItemType>::execute_multiply_kernel (cl_kernel kernel, matrix<ItemType>& rhs, matrix<ItemType>& result) {
     cl_int ret;
@@ -2176,7 +2232,9 @@ cl_int matrix<ItemType>::execute_multiply_kernel (cl_kernel kernel, matrix<ItemT
     return ret;
 }
 
-//function for executing the array and single value kernels
+/**
+* @brief function for executing the array and single value kernels
+*/
 template <class ItemType>
 cl_int matrix<ItemType>::execute_array_val_kernel (cl_kernel kernel, ItemType& val, matrix<ItemType>& result) {
     cl_int ret;

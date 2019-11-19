@@ -146,7 +146,7 @@ int main (int argc, char* argv[]) {
         //                                    {7, 11, 13, 17, 19},
         //                                    {11, 13, 17, 19, 23},
         //                                    {13, 17, 19, 23, 27}});
-        LinAlgo::matrix<float> eigenattempt = generateShiftedPrimesMatrix<float>(3);
+        LinAlgo::matrix<float> eigenattempt = generateShiftedPrimesMatrix<float>(5);
         print_matrix<float>(eigenattempt);
         eigenattempt.getDeterminant();
         //printf("The resulting eigenvalues should be 4, -2, -2\n");
