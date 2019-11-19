@@ -190,7 +190,7 @@ public:
     friend matrix<ArgType> LinAlgo::inverse (matrix<ArgType>& M);
 
     template <class ArgType1, class ArgType2>
-    friend matrix<ArgType1> LinAlgo::map (const matrix<ArgType2>& M, ArgType1 (*function) (ArgType2));
+    friend matrix<ArgType1> LinAlgo::map (const matrix<ArgType2>& M, ArgType1 (*function) (ArgType2), bool asynchronous, int num_threads);
 #ifndef DONT_USE_GPU
     //due to updating gpu data counting as cahnging the matrix, I can't
     //actually have these be const :'(

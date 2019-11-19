@@ -1611,8 +1611,8 @@ matrix<ItemType>& matrix<ItemType>::transpose() {
 * overwrite the data in the matrix
 */
 template <class ItemType>
-matrix<ItemType>& matrix<ItemType>::map(ItemType (*func)(ItemType&), bool asynchronus, size_t thread_count) {//maybe change async to int so user can  specify thread count for pool... or just add a default param
-    if (!asynchronus) {
+matrix<ItemType>& matrix<ItemType>::map(ItemType (*func)(ItemType&), bool asynchronous, size_t thread_count) {//maybe change async to int so user can  specify thread count for pool... or just add a default param
+    if (!asynchronous) {
         for (size_t i = 0; i < m_height; i++) {
             for (size_t j = 0; j < m_width; j++) {
                 m_data[i][j] = func(m_data[i][j]);

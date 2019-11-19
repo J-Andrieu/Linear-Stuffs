@@ -107,49 +107,12 @@ int main (int argc, char* argv[]) {
             CheckAccuracy(HEIGHT, WIDTH, params.log_file, params.verbose);
         }
 
-#ifndef DONT_USE_GPU
-        printf("Testing chained multiplications\n");
-        LinAlgo::matrix<int> M1(500, 500, 1);
-        LinAlgo::matrix<int> M2(500, 500, 1);
-        M2.useGPU(true);
-        M2.leaveDataOnGPU(false);
-        LinAlgo::matrix<int> M3(500, 500, 1);
-        M3.useGPU(true);
-        M3.leaveDataOnGPU(true);
-        Timer t1;
-        for (int i = 0; i < 60; i++) {
-            M1 = std::move(M1 * M1);
-        }
-        printf("Finished CPU only chained multiplication after %d milliseconds\n", (int) t1.getMicrosecondsElapsed() / 1000);
-        Timer t2;
-        for (int i = 0; i < 60; i++) {
-            M2 = std::move(M2 * M2);
-        }
-        printf("Finished GPU chained multiplication with data pull after %d milliseconds\n", (int) t2.getMicrosecondsElapsed() / 1000);
-        Timer t3;
-        //it looks like clCreateCommandQueue has a memory leak on amd drivers, and /that's/ why this crashes... not sure tho.
-        for (int i = 0; i < 60; i++) {
-            M3 = std::move(M3 * M3);
-        }
-        M3.pullData();
-        printf("Finished GPU chained multiplication with leaveData active after %d milliseconds\n", (int) t3.getMicrosecondsElapsed() / 1000);
-        printf("Pull each time is %saccurate\n", M2 == M1 ? "" : "not ");
-        printf("LeaveOnGPU is %saccurate\n", M3 == M1 ? "" : "not ");
-#endif // DONT_USE_GPU
-
+/*
         printf("Attempting QR Algorithm for finding eigenvalues of a matrix\n");
         printf("The matrix is: \n");
-        //LinAlgo::matrix<float> eigenattempt({{1, -3, 3}, {3, -5, 3}, {6, -6, 4}});
-        //LinAlgo::matrix<float> eigenattempt({//primes are so dang useful
-        //                                    {3, 5, 7, 11, 13},
-        //                                    {5, 7, 11, 13, 17},
-        //                                    {7, 11, 13, 17, 19},
-        //                                    {11, 13, 17, 19, 23},
-        //                                    {13, 17, 19, 23, 27}});
         LinAlgo::matrix<float> eigenattempt = generateShiftedPrimesMatrix<float>(5);
         print_matrix<float>(eigenattempt);
         eigenattempt.getDeterminant();
-        //printf("The resulting eigenvalues should be 4, -2, -2\n");
         LinAlgo::matrix<float> eigenvecs;
         Timer eigen;
         std::vector<float> eigenvals = LinAlgo::eigenvalues(eigenattempt, eigenvecs);
@@ -171,8 +134,9 @@ int main (int argc, char* argv[]) {
             printf("The vector multiplied by [lambda]%d is:\n", i + 1);
             print_matrix(eigenvec * eigenvals[i]);
         }
+*/
 
-/**
+/*
         printf("Testing asynchronous map function\n");
         char (*threading_test)(char&) = [](char& doot) -> char {
                         std::this_thread::sleep_for(std::chrono::microseconds(200));
@@ -239,12 +203,65 @@ void CheckSpeed(std::string logfile, bool verbose) {
 #ifdef DONT_USE_GPU
     log << "No gpu, nothing to test" << std::endl;
 #else
-    std::vector<std::string> tests = {"addition", "multiplication"};
+    std::vector<std::string> tests = {"addition", "multiplication"};//addition test should never succeed, but meh
     for (auto t : tests) {
         size_t num_elements = testGPUvsCPUSpeed(log, verbose, t);
         if (num_elements != 0) {
             log << "GPU outpaces CPU in " << t << " starting at " << num_elements << " elements" << std::endl;
         }
+    }
+
+    log << "Testing chained multiplications..." << std::endl;
+    if (verbose) {
+        std::cout << "Testing chained multiplications..." << std::endl;
+    }
+    LinAlgo::matrix<int> M1(500, 500, 1);
+    LinAlgo::matrix<int> M2(500, 500, 1);
+    M2.useGPU(true);
+    M2.leaveDataOnGPU(false);
+    LinAlgo::matrix<int> M3(500, 500, 1);
+    M3.useGPU(true);
+    M3.leaveDataOnGPU(true);
+    Timer chain_tests;
+    {
+        Timer t("Chained CPU multiplications");
+        for (int i = 0; i < 60; i++) {
+            M1 = std::move(M1 * M1);
+        }
+    }
+    if (verbose) {
+        printf("Finished CPU only chained multiplication after %d milliseconds\n", (int) chain_tests.getMicrosecondsElapsed() / 1000);
+    }
+    log << "Finished CPU only chained multiplication after" << chain_tests.getMicrosecondsElapsed() / 1000 << " milliseconds" << std::endl;
+    chain_tests.start();
+    {
+        Timer t("Chained GPU multiplications (data pull each round)");
+        for (int i = 0; i < 60; i++) {
+            M2 = std::move(M2 * M2);
+        }
+    }
+    int chained_t1 = (int) chain_tests.getMicrosecondsElapsed() / 1000;
+    if (verbose) {
+        printf("Finished GPU chained multiplication with data pull after %d milliseconds\n", chained_t1);
+    }
+    log << "Finished GPU chained multiplication with data pull after " << chained_t1 << " milliseconds" << std::endl;
+    chain_tests.start();
+    {
+        Timer t("Chained GPU multiplications (leave data on GPU");
+        //it looks like clCreateCommandQueue has a memory leak on amd drivers, and /that's/ why this crashes... not sure tho.
+        for (int i = 0; i < 60; i++) {
+            M3 = std::move(M3 * M3);
+        }
+        M3.pullData();
+    }
+    int chained_t2 = (int) chain_tests.getMicrosecondsElapsed() / 1000;
+    if (verbose) {
+        printf("Finished GPU chained multiplication with leaveData active after %d milliseconds\n", chained_t2);
+    }
+    log << "Finished GPU chained multiplication with leaveData active after " << chained_t2 << " milliseconds" << std::endl;
+    log << "Chained multiplication tests: " << (chained_t1 <= chained_t2 ? "failed" : "success") << std::endl;
+    if (verbose) {
+        std::cout << "Chained multiplication tests: " << (chained_t1 <= chained_t2 ? "failed" : "success") << std::endl;
     }
 #endif
 }
@@ -265,7 +282,13 @@ size_t testGPUvsCPUSpeed(std::ofstream& log, bool verbose, std::string test) {
             std::cout << "Trying " << dim << "x" << dim << " matrix..." << std::endl;
         }
         gpuMatrix = LinAlgo::matrix<double>(dim, dim);
-        gpuMatrix.useGPU(true);
+        try {
+            gpuMatrix.useGPU(true);
+        } catch (std::exception& e) {
+            log << "GPU initialization failed for gpuMatrix." << std::endl;
+            log << "Error: " << e.what() << std::endl;
+            return 0;
+        }
         cpuMatrix = LinAlgo::matrix<double>(dim, dim);
         LinAlgo::matrix<double> junkResult(0, 0);
         for (auto i = gpuMatrix.begin(), j = cpuMatrix.begin(); i <= gpuMatrix.end(); i++, j++) {

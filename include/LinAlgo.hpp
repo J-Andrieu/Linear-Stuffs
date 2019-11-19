@@ -717,10 +717,15 @@ LinAlgo::matrix<ItemType> LinAlgo::inverse (matrix<ItemType>& M) { //would be co
 *
 * @param func The function to map to all values in the matrix
 *
+* @param asynchronous Set to true in order to execute with a thread pool
+*
+* @param num_threads Use this to specify the number of threads (if threading).
+* Defaults to double the hardware concurrency
+*
 * @return A matrix containing the result of executing func on every value in the matrix
 */
 template <class ItemType, class ArgType>
-LinAlgo::matrix<ArgType> LinAlgo::map(LinAlgo::matrix<ItemType> &M, ArgType (*func)(ItemType&), bool ) {
+LinAlgo::matrix<ArgType> LinAlgo::map(LinAlgo::matrix<ItemType> &M, ArgType (*func)(ItemType&), bool asynchronous, int thread_count) {
 	matrix<ArgType> ret(M.getHeight(), M.getWidth());
 	ret.useGPU(M.useGPU());
 	bool leave_data = false;
@@ -728,9 +733,9 @@ LinAlgo::matrix<ArgType> LinAlgo::map(LinAlgo::matrix<ItemType> &M, ArgType (*fu
         M.pullData();
         leave_data = true;
 	}
-	if (!asynchronus) {
-        for (size_t i = 0; i < m_height; i++) {
-            for (size_t j = 0; j < m_width; j++) {
+	if (!asynchronous) {
+        for (size_t i = 0; i < M.getHeight(); i++) {
+            for (size_t j = 0; j < M.getWidth(); j++) {
                 ret[i][j] = func(M[i][j]);
             }
         }
@@ -757,7 +762,7 @@ LinAlgo::matrix<ArgType> LinAlgo::map(LinAlgo::matrix<ItemType> &M, ArgType (*fu
         }
         int start_index = 0;
         for (auto iter1 = ret.begin(), iter2 = M.begin(); start_index < default_pool_size; start_index++) {
-            std::thread th (thread_func, &iter[start_index], iter2[start_index]);
+            std::thread th (thread_func, &iter1[start_index], iter2[start_index]);
             pool.push_back (std::move (th));
         }
         if (num_vals > default_pool_size) {
