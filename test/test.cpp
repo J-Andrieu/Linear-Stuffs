@@ -325,7 +325,7 @@ size_t testGPUvsCPUSpeed(std::ofstream& log, bool verbose, std::string test) {
             log << "CPU time: " << cpuTime << std::endl;
         }
         dim += 10;
-    } while (gpuTime > cpuTime && keepTrying);
+    } while (gpuTime > cpuTime && keepTrying && dim < 1500);
 
     if (!keepTrying) {
         if (verbose) {

@@ -25,7 +25,7 @@ using namespace LinAlgo;
 template <class ItemType>
 matrix<ItemType>::matrix () : m_height (0), m_width (0), m_useGPU (ALL_USE_GPU),
     m_gpuUpToDate (false), m_gpuData (NULL), m_gpuHeight (NULL), m_leaveOnGPU(false),
-    m_gpuWidth (NULL), m_command_queue (NULL), m_gpuSlicesUpToDate (0) {
+    m_gpuWidth (NULL), m_gpuSlicesUpToDate (0) {
     m_dataInitialized = false;
     m_upToDate = 0;
 }
@@ -47,7 +47,7 @@ matrix<ItemType>::matrix () : m_height (0), m_width (0) {}
 template <class ItemType>
 matrix<ItemType>::matrix (const size_t& height, const size_t& width, const ItemType val) : m_height (height), m_width (width), m_useGPU (ALL_USE_GPU),
     m_gpuUpToDate (false), m_gpuData (NULL), m_gpuHeight (NULL), m_leaveOnGPU(false),
-    m_gpuWidth (NULL), m_command_queue (NULL), m_gpuSlicesUpToDate (height, false) {
+    m_gpuWidth (NULL), m_gpuSlicesUpToDate (height, false) {
     if (m_height != 0 && m_width != 0) {
         m_data.resize (m_height);
         for (size_t i = 0; i < m_height; i++) {
@@ -84,7 +84,7 @@ matrix<ItemType>::matrix (const size_t& height, const size_t& width, const ItemT
 #ifndef DONT_USE_GPU
 template <class ItemType>
 matrix<ItemType>::matrix (const std::vector<std::vector<ItemType>>& vals) : m_useGPU (ALL_USE_GPU), m_gpuUpToDate (false), m_gpuData (NULL),
-    m_gpuHeight (NULL), m_gpuWidth (NULL), m_command_queue (NULL), m_leaveOnGPU (false) {
+    m_gpuHeight (NULL), m_gpuWidth (NULL), m_leaveOnGPU (false) {
     size_t maxSize = 0;
     for (size_t i = 0; i < vals.size(); i++) {
         if (vals[i].size() > maxSize) {
@@ -142,7 +142,7 @@ matrix<ItemType>::matrix (const std::vector<std::vector<ItemType>>& vals) {
 #ifndef DONT_USE_GPU
 template <class ItemType>
 matrix<ItemType>::matrix (const ItemType** vals, const size_t& height, const size_t& width) : m_useGPU (ALL_USE_GPU), m_gpuUpToDate (false), m_gpuData (NULL),
-    m_gpuHeight (NULL), m_gpuWidth (NULL), m_command_queue (NULL), m_leaveOnGPU (false), m_height(height), m_width(width) {
+    m_gpuHeight (NULL), m_gpuWidth (NULL), m_leaveOnGPU (false), m_height(height), m_width(width) {
     m_data.resize (m_height);
     for (size_t i = 0; i < m_height; i++) {
         m_data[i].resize(m_width, 0);
@@ -183,7 +183,7 @@ template <class ItemType>
 template <class ArgType>
 matrix<ItemType>::matrix (const matrix<ArgType>& M) : m_useGPU (M.useGPU()), m_gpuUpToDate (false),
     m_gpuData (NULL), m_gpuHeight (NULL),
-    m_gpuWidth (NULL), m_command_queue (NULL),
+    m_gpuWidth (NULL),
     m_gpuSlicesUpToDate (M.getHeight(), false), m_leaveOnGPU (M.leaveDataOnGPU()) {
     m_height = M.getHeight();
     m_width = M.getWidth();
@@ -236,7 +236,7 @@ matrix<ItemType>::matrix (const matrix<ArgType>& M) {
 template <class ItemType>
 matrix<ItemType>::matrix (const matrix<ItemType>& M) : m_useGPU (M.m_useGPU), m_gpuUpToDate (false),
     m_gpuData (NULL), m_gpuHeight (NULL),
-    m_gpuWidth (NULL), m_command_queue (NULL),
+    m_gpuWidth (NULL),
     m_gpuSlicesUpToDate (M.m_height, false), m_leaveOnGPU (M.m_leaveOnGPU),
     m_data (M.m_height) {
     m_height = M.m_height;
@@ -277,14 +277,14 @@ matrix<ItemType>::matrix (const matrix<ItemType>& M) : m_data (M.m_height) {
 template <class ItemType>
 matrix<ItemType>::matrix (matrix<ItemType>&& M) : m_useGPU (M.m_useGPU), m_gpuUpToDate (M.m_gpuUpToDate),
     m_gpuData (M.m_gpuData), m_gpuHeight (M.m_gpuHeight),
-    m_gpuWidth (M.m_gpuWidth), m_command_queue (M.m_command_queue),
+    m_gpuWidth (M.m_gpuWidth),
     m_gpuSlicesUpToDate (M.m_gpuSlicesUpToDate), m_leaveOnGPU (M.m_leaveOnGPU) {
     m_height = M.m_height;
     m_width = M.m_width;
     m_data = std::move(M.m_data);
     m_dataInitialized = M.m_dataInitialized;
     M.m_gpuData = NULL;
-    M.m_command_queue = NULL;
+    //M.m_command_queue = NULL;
     M.m_gpuHeight = NULL;
     M.m_gpuWidth = NULL;
 }
@@ -307,7 +307,7 @@ template <class ItemType>
 matrix<ItemType>::~matrix() {
 #ifndef DONT_USE_GPU
     if (m_command_queue != NULL) {
-        clReleaseCommandQueue(m_command_queue);
+        //clReleaseCommandQueue(m_command_queue);
     }
     if (m_gpuData != NULL) {
         clReleaseMemObject(m_gpuData);
@@ -401,7 +401,7 @@ bool matrix<ItemType>::useGPU (bool use_it) {
             //m_upToDate |= ! (dataFlag::GPU_HEIGHT | dataFlag::GPU_WIDTH | dataFlag::GPU_DATA);
         } else {
             if (m_command_queue == NULL) {
-                initQueue();
+                //initQueue();
             }
         }
         return true;
@@ -789,7 +789,7 @@ matrix<ItemType> matrix<ItemType>::add (matrix<ArgType>& M) {
     }
     if (! (m_useGPU || ALL_USE_GPU)) { //if don't use the gpu
         if (M.m_leaveOnGPU && M.m_useGPU) {
-            M.pullFromGPU(M.m_command_queue);
+            M.pullFromGPU(m_command_queue);
         }
 #else
         matrix<ItemType> result (m_height < M.m_height ? m_height : M.m_height, m_width < M.m_width ? m_width : M.m_width);
@@ -960,7 +960,7 @@ matrix<ItemType> matrix<ItemType>::subtract (matrix<ArgType>& M) {
     }
     if (! (m_useGPU || ALL_USE_GPU)) { //if don't use the gpu
         if (M.m_leaveOnGPU && M.m_useGPU) {
-            M.pullFromGPU(M.m_command_queue);
+            M.pullFromGPU(m_command_queue);
         }
 #else
     matrix<ItemType> result (m_height < M.m_height ? m_height : M.m_height, m_width < M.m_width ? m_width : M.m_width);
@@ -1128,7 +1128,7 @@ matrix<ItemType> matrix<ItemType>::multiply (matrix<ArgType>& M) {
         return matrix<ItemType> (0, 0); //null matrix
     }
 #ifndef DONT_USE_GPU
-    matrix<ItemType> result(0, 0);
+    matrix<ItemType> result;
     if (m_leaveOnGPU) {
         result.m_height = m_height;
         result.m_width = M.m_width;
@@ -1139,7 +1139,7 @@ matrix<ItemType> matrix<ItemType>::multiply (matrix<ArgType>& M) {
     }
     if (! (m_useGPU || ALL_USE_GPU)) { //if don't use the gpu
         if (M.m_leaveOnGPU && M.m_useGPU) {
-            M.pullFromGPU(M.m_command_queue);
+            M.pullFromGPU(m_command_queue);
         }
 #else
     matrix<ItemType> result (m_height, M.m_width);
@@ -1291,7 +1291,7 @@ matrix<ItemType> matrix<ItemType>::elementMultiply (matrix<ArgType>& M) {
     }
     if (! (m_useGPU || ALL_USE_GPU)) { //if don't use the gpu
         if (M.m_leaveOnGPU && M.m_useGPU) {
-            M.pullFromGPU(M.m_command_queue);
+            M.pullFromGPU(m_command_queue);
         }
 #else
     matrix<ItemType> result (m_height < M.m_height ? m_height : M.m_height, m_width < M.m_width ? m_width : M.m_width);
@@ -1487,7 +1487,7 @@ matrix<ItemType> matrix<ItemType>::elementDivide (matrix<ArgType>& M) {
     }
     if (! (m_useGPU || ALL_USE_GPU)) { //if don't use the gpu
         if (M.m_leaveOnGPU && M.m_useGPU) {
-            M,pullFromGPU(M.m_command_queue);
+            M.pullFromGPU(m_command_queue);
         }
 #else
     matrix<ItemType> result (m_height < M.m_height ? m_height : M.m_height, m_width < M.m_width ? m_width : M.m_width);
@@ -1747,8 +1747,8 @@ matrix<ItemType>& matrix<ItemType>::operator= (const matrix<ItemType>& M) {
             m_gpuWidth = M.m_gpuWidth;
             pullFromGPU (m_command_queue);
             clFinish (m_command_queue);
-            clReleaseCommandQueue (m_command_queue);
-            m_command_queue = NULL;
+            //clReleaseCommandQueue (m_command_queue);
+            //m_command_queue = NULL;
             m_gpuData = NULL;
             m_gpuHeight = NULL;
             m_gpuWidth = NULL;
@@ -1771,8 +1771,8 @@ matrix<ItemType>& matrix<ItemType>::operator= (const matrix<ItemType>& M) {
     m_upToDate = 0;//if eigenvalues and stuff get copied over, this will be different
     m_useGPU = M.m_useGPU;
     if (m_command_queue) {
-        clFinish (m_command_queue);
-        m_command_queue = NULL;
+        //clFinish (m_command_queue);
+        //m_command_queue = NULL;
     }
     if (m_gpuData) {
         clReleaseMemObject (m_gpuData);
@@ -1782,6 +1782,8 @@ matrix<ItemType>& matrix<ItemType>::operator= (const matrix<ItemType>& M) {
     if (m_useGPU) {
         initQueue();
     }
+    m_leaveOnGPU = M.m_leaveOnGPU;
+    m_dataInitialized = M.m_dataInitialized;
 #endif
 
     //clear everything else that's now irrelevent (or copy things that are over lol)
@@ -1797,14 +1799,24 @@ matrix<ItemType>& matrix<ItemType>::operator= (matrix<ItemType>&& M) {
     m_width = M.m_width;
     m_data = std::move(M.m_data);
 #ifndef DONT_USE_GPU
+    if (m_gpuData) {
+        clReleaseMemObject(m_gpuData);
+    }
     m_gpuData = M.m_gpuData;
     M.m_gpuData = NULL;
-    m_command_queue = M.m_command_queue;
-    M.m_command_queue = NULL;
+    //m_command_queue = M.m_command_queue;
+    //M.m_command_queue = NULL;
+    if (m_gpuHeight) {
+        clReleaseMemObject(m_gpuHeight);
+    }
     m_gpuHeight = M.m_gpuHeight;
     M.m_gpuHeight = NULL;
+    if (m_gpuWidth) {
+        clReleaseMemObject(m_gpuWidth);
+    }
     m_gpuWidth = M.m_gpuWidth;
     M.m_gpuWidth = NULL;
+
     m_upToDate = M.m_upToDate;
     m_useGPU = M.m_useGPU;
     m_leaveOnGPU = M.m_leaveOnGPU;
@@ -1851,10 +1863,10 @@ matrix<ItemType>& matrix<ItemType>::operator= (const matrix<ArgType>& M) {
     m_gpuSlicesUpToDate.resize (m_height, false);
     m_upToDate = 0;//if eigenvalues and stuff get copied over, this will be different
     m_useGPU = M.useGPU();
-    if (m_command_queue) {
-        clFinish (m_command_queue);
-        m_command_queue = NULL;
-    }
+    //if (m_command_queue) {
+    //    clFinish (m_command_queue);
+    //    m_command_queue = NULL;
+    //}
     if (m_gpuData) {
         clReleaseMemObject (m_gpuData);
         m_gpuData = NULL;
@@ -1948,17 +1960,18 @@ cl_int matrix<ItemType>::initQueue() {
     if (m_command_queue != NULL) {
         return CL_SUCCESS;
     }
-    cl_int ret;
-    if (OPENCL_VERSION >= 2.0) {
-        m_command_queue = clCreateCommandQueueWithProperties (m_context, m_device_id, 0, &ret);
-    } else {
-        m_command_queue = clCreateCommandQueue (m_context, m_device_id, 0, &ret);
-    }
-    if (ret != CL_SUCCESS) {
-        throw(LinAlgo::gpu_exception(std::string("Unable to create command queue, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
-    }
-    ret = clRetainCommandQueue(m_command_queue);//idk abt thi, but whatevs
-    return ret;
+    //cl_int ret;
+    //if (OPENCL_VERSION >= 2.0) {
+    //    m_command_queue = clCreateCommandQueueWithProperties (m_context, m_device_id, 0, &ret);
+    //} else {
+    //    m_command_queue = clCreateCommandQueue (m_context, m_device_id, 0, &ret);
+    //}
+    //if (ret != CL_SUCCESS) {
+    //    throw(LinAlgo::gpu_exception(std::string("Unable to create command queue, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
+    //}
+    //ret = clRetainCommandQueue(m_command_queue);//idk abt thi, but whatevs
+    //return ret;
+    return CL_SUCCESS;
 }
 
 /**
@@ -1968,13 +1981,13 @@ cl_int matrix<ItemType>::initQueue() {
 */
 template <class ItemType>
 cl_int matrix<ItemType>::createResultBuffer (cl_command_queue& command_queue) {
-    if (m_gpuData != NULL || m_leaveOnGPU) {
+    if (m_gpuData != NULL) {
         clReleaseMemObject (m_gpuData);
     }
-    if (m_gpuHeight != NULL || m_leaveOnGPU) {
+    if (m_gpuHeight != NULL) {
         clReleaseMemObject (m_gpuHeight);
     }
-    if (m_gpuWidth != NULL || m_leaveOnGPU) {
+    if (m_gpuWidth != NULL) {
         clReleaseMemObject (m_gpuWidth);
     }
 
@@ -2036,7 +2049,7 @@ cl_int matrix<ItemType>::pushToGPU (cl_command_queue& command_queue) {
         }
     }
 
-    if (!m_gpuHeight) {
+    if (!m_gpuHeight || m_leaveOnGPU) {
         if (m_leaveOnGPU) {
             clReleaseMemObject(m_gpuHeight);
         }
@@ -2046,7 +2059,7 @@ cl_int matrix<ItemType>::pushToGPU (cl_command_queue& command_queue) {
         }
     }
 
-    if (!m_gpuWidth) {
+    if (!m_gpuWidth || m_leaveOnGPU) {
         if (m_leaveOnGPU) {
             clReleaseMemObject(m_gpuWidth);
         }
@@ -2059,7 +2072,7 @@ cl_int matrix<ItemType>::pushToGPU (cl_command_queue& command_queue) {
     //update matrix data
     if (! (m_upToDate & dataFlag::GPU_DATA) || m_leaveOnGPU) {
         for (size_t i = 0; i < m_height; i++) {
-            if (!m_gpuSlicesUpToDate[i]) {
+            if (!m_gpuSlicesUpToDate[i] || m_leaveOnGPU) {
                 ret = clEnqueueWriteBuffer (command_queue, m_gpuData, CL_FALSE, i * m_width * sizeof (ItemType), m_width * sizeof (ItemType), m_data[i].data(), 0, NULL, NULL);
                 if (ret != CL_SUCCESS) {
                     throw(LinAlgo::gpu_exception(std::string("Unable to push data to GPU, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));

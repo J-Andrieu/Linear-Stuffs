@@ -280,6 +280,7 @@ namespace LinAlgo {
         cl_platform_id* m_platform_id = NULL;
         cl_device_id m_device_id = NULL;
         cl_context m_context = NULL;
+        cl_command_queue m_command_queue = NULL;
 #endif // DONT_USE_GPU
     }
 }
@@ -559,6 +560,17 @@ static cl_int LinAlgo::InitGPU() {
     }
     delete[] programs;
 
+    //create namespace command queue
+    if (OPENCL_VERSION >= 2.0) {
+        m_command_queue = clCreateCommandQueueWithProperties (m_context, m_device_id, 0, &ret);
+    } else {
+        m_command_queue = clCreateCommandQueue (m_context, m_device_id, 0, &ret);
+    }
+    if (ret != CL_SUCCESS) {
+        throw(LinAlgo::gpu_exception(std::string("Unable to create command queue, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
+    }
+    ret = clRetainCommandQueue(m_command_queue);//idk abt thi, but whatevs
+
     //le done :P
     GPU_INITIALIZED = true;
     return ret;
@@ -585,10 +597,12 @@ static bool LinAlgo::BreakDownGPU() {
 
     clReleaseDevice (m_device_id);
     clReleaseContext (m_context);
+    clReleaseCommandQueue(m_command_queue);
 
     m_platform_id = NULL;
     m_device_id = NULL;
     m_context = NULL;
+    m_command_queue = NULL;
 
     return true;
 }

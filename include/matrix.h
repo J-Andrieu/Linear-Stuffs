@@ -395,7 +395,7 @@ private:
     cl_mem m_gpuData;
     cl_mem m_gpuHeight;
     cl_mem m_gpuWidth;
-    cl_command_queue m_command_queue;
+    //cl_command_queue m_command_queue;
 
     //functions to execute the kernels
     cl_int execute_add_kernel (cl_kernel kernel, matrix<ItemType>& rhs, matrix<ItemType>& result); //so far these two functions are basically exactly the same...
