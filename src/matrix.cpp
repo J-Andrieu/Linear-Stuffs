@@ -1129,6 +1129,7 @@ matrix<ItemType> matrix<ItemType>::multiply (matrix<ArgType>& M) {
     }
 #ifndef DONT_USE_GPU
     matrix<ItemType> result;
+    result.useGPU(m_useGPU);
     if (m_leaveOnGPU) {
         result.m_height = m_height;
         result.m_width = M.m_width;
@@ -1194,7 +1195,7 @@ matrix<ItemType> matrix<ItemType>::multiply (matrix<ArgType>& M) {
             result.m_gpuUpToDate = true;
             result.m_upToDate |= (dataFlag::GPU_DATA | dataFlag::GPU_HEIGHT | dataFlag::GPU_WIDTH);
         }
-        result.useGPU(true);
+        clFinish(m_command_queue);
         return result;
     }
 #endif
