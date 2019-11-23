@@ -203,7 +203,7 @@ void CheckSpeed(std::string logfile, bool verbose) {
 #ifdef DONT_USE_GPU
     log << "No gpu, nothing to test" << std::endl;
 #else
-    std::vector<std::string> tests = {"addition", "multiplication"};//addition test should never succeed, but meh
+    std::vector<std::string> tests = {"multiplication"};//addition test should never succeed, but meh
     for (auto t : tests) {
         size_t num_elements = testGPUvsCPUSpeed(log, verbose, t);
         if (num_elements != 0) {
@@ -245,6 +245,9 @@ void CheckSpeed(std::string logfile, bool verbose) {
         printf("Finished GPU chained multiplication with data pull after %d milliseconds\n", chained_t1);
     }
     log << "Finished GPU chained multiplication with data pull after " << chained_t1 << " milliseconds" << std::endl;
+    if (M2 != M1) {
+        std::cout << "Something has gone horribly wrong" << std::endl;
+    }
     chain_tests.start();
     {
         Timer t("Chained GPU multiplications (leave data on GPU");

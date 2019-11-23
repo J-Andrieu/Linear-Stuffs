@@ -122,8 +122,8 @@ public:
     //I don't think I can actually template the gpu maps... we'll cross that bridge later
     //spatial map, like a mask? hmmmm... probably is something i should have
 #ifndef DONT_USE_GPU
-    matrix<ItemType>& mapGPU (std::string kernel, cl_int& error_code); //this function will compile and run a kernel that acts on a single array pointer... be careful
-    matrix<ItemType>& mapGPU (cl_kernel kernel, cl_int& error_code); //it will also assume that your kernel is accepting the right data from that array, so once again, be careful :P
+    matrix<ItemType>& mapGPU (std::string kernel, cl_int& err_code); //this function will compile and run a kernel that acts on a single array pointer... be careful
+    matrix<ItemType>& mapGPU (cl_kernel kernel, cl_int& err_code); //it will also assume that your kernel is accepting the right data from that array, so once again, be careful :P
     //should this take another one that's just a fully compiled and such kernel? probably
 #endif
 

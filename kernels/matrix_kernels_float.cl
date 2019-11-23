@@ -1,6 +1,6 @@
 
-__kernel void add(__global const float* A, __global const size_t* a_width, 
-				__global const float* B, __global const size_t* b_width, 
+__kernel void add(__global const float* A, __global const size_t* a_width,
+				__global const float* B, __global const size_t* b_width,
 				__global float* C, __global const size_t* c_width) {
 	size_t index = get_global_id(0);
 	size_t x = index % c_width[0];
@@ -9,8 +9,8 @@ __kernel void add(__global const float* A, __global const size_t* a_width,
 }
 
 
-__kernel void elementMultiply(__global const float* A, __global const size_t* a_width, 
-				__global const float* B, __global const size_t* b_width, 
+__kernel void elementMultiply(__global const float* A, __global const size_t* a_width,
+				__global const float* B, __global const size_t* b_width,
 				__global float* C, __global const size_t* c_width) {
 	size_t index = get_global_id(0);
 	size_t x = index % c_width[0];
@@ -19,8 +19,8 @@ __kernel void elementMultiply(__global const float* A, __global const size_t* a_
 }
 
 
-__kernel void subtract(__global const float* A, __global const size_t* a_width, 
-				__global const float* B, __global const size_t* b_width, 
+__kernel void subtract(__global const float* A, __global const size_t* a_width,
+				__global const float* B, __global const size_t* b_width,
 				__global float* C, __global const size_t* c_width) {
 	size_t index = get_global_id(0);
 	size_t x = index % c_width[0];
@@ -29,8 +29,8 @@ __kernel void subtract(__global const float* A, __global const size_t* a_width,
 }
 
 
-__kernel void elementDivide(__global const float* A, __global const size_t* a_width, 
-				__global const float* B, __global const size_t* b_width, 
+__kernel void elementDivide(__global const float* A, __global const size_t* a_width,
+				__global const float* B, __global const size_t* b_width,
 				__global float* C, __global const size_t* c_width) {
 	size_t index = get_global_id(0);
 	size_t x = index % c_width[0];
@@ -39,8 +39,8 @@ __kernel void elementDivide(__global const float* A, __global const size_t* a_wi
 }
 
 
-__kernel void multiply(__global const float* A, __global const size_t* a_width, 
-						__global const float* B, __global const size_t* b_width, 
+__kernel void multiply(__global const float* A, __global const size_t* a_width,
+						__global const float* B, __global const size_t* b_width,
 						__global float* C, __global const size_t* res_width) {
 	size_t index = get_global_id(0);
 	size_t row_index = (index / res_width[0]) * a_width[0];
