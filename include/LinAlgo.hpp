@@ -18,7 +18,7 @@
 
 #ifndef DONT_USE_GPU
 #define CL_USE_DEPRECATED_OPENCL_1_2_APIS //just in case somone has OpenCL 1.2
-#define CL_HPP_ENABLE_EXCEPTIONS
+//#define CL_HPP_ENABLE_EXCEPTIONS
 #define CL_HPP_TARGET_OPENCL_VERSION 200
 #define CL_HPP_MINIMUM_OPENCL_VERSION 120
 #ifdef _WIN32
@@ -426,7 +426,7 @@ static cl_int LinAlgo::InitGPU() {
     //get platform and device information
     ret = cl::Platform::get(&m_platforms);
     if (ret != CL_SUCCESS) {
-        throw(gpu_exception("Unable to load platform IDs", __FILE__, __LINE__, ret));
+        throw(gpu_exception(std::string("Unable to load platform IDs") + LinAlgo::getErrorString(ret), __FILE__, __LINE__, ret));
     }
     m_default_platform = m_platforms[0];
     
@@ -435,14 +435,15 @@ static cl_int LinAlgo::InitGPU() {
         ret = m_default_platform.getDevices(CL_DEVICE_TYPE_CPU, &m_devices);
     }
     if (ret != CL_SUCCESS) {
-        throw(gpu_exception("Unable to get device IDs", __FILE__, __LINE__, ret));
+        throw(gpu_exception(std::string("Unable to get device IDs: ") + LinAlgo::getErrorString(ret), __FILE__, __LINE__, ret));
         return ret;
     }
+    m_default_device = m_devices[0];
 
     //create the context
     m_context = cl::Context({m_default_device}, NULL, NULL, NULL, &ret);
     if (ret != CL_SUCCESS) {
-        throw(gpu_exception("Unable to create context", __FILE__, __LINE__, ret));
+        throw(gpu_exception(std::string("Unable to create context: ") + LinAlgo::getErrorString(ret), __FILE__, __LINE__, ret));
     }
 
     /*
@@ -495,7 +496,7 @@ static cl_int LinAlgo::InitGPU() {
     }
 
     //create namespace command queue
-    m_command_queue = cl::CommandQueue(m_context, m_default_device);
+    m_command_queue = cl::CommandQueue(m_context, m_default_device, 0, &ret);
     if (ret != CL_SUCCESS) {
         throw(LinAlgo::gpu_exception(std::string("Unable to create command queue, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
     }

@@ -215,17 +215,17 @@ void CheckSpeed(std::string logfile, bool verbose) {
     if (verbose) {
         std::cout << "Testing chained multiplications..." << std::endl;
     }
-    LinAlgo::matrix<int> M1(10, 10, 1);
-    LinAlgo::matrix<int> M2(10, 10, 1);
+    LinAlgo::matrix<int> M1(500, 500, 1);
+    LinAlgo::matrix<int> M2(500, 500, 1);
     M2.useGPU(true);
     M2.leaveDataOnGPU(false);
-    LinAlgo::matrix<int> M3(10, 10, 1);
+    LinAlgo::matrix<int> M3(500, 500, 1);
     M3.useGPU(true);
     M3.leaveDataOnGPU(true);
     Timer chain_tests;
     {
         Timer t("Chained CPU multiplications");
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 60; i++) {
             M1 = std::move(M1 * M1);
         }
     }
@@ -236,7 +236,7 @@ void CheckSpeed(std::string logfile, bool verbose) {
     chain_tests.start();
     {
         Timer t("Chained GPU multiplications (data pull each round)");
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 60; i++) {
             M2 = std::move(M2 * M2);
         }
     }
@@ -245,20 +245,14 @@ void CheckSpeed(std::string logfile, bool verbose) {
         printf("Finished GPU chained multiplication with data pull after %d milliseconds\n", chained_t1);
     }
     log << "Finished GPU chained multiplication with data pull after " << chained_t1 << " milliseconds" << std::endl;
-    if (M2 != M1) {
-        std::cout << "Sadly, 'tis inaccurate" << std::endl;
-    }
     chain_tests.start();
     {
         Timer t("Chained GPU multiplications (leave data on GPU");
         //it looks like clCreateCommandQueue has a memory leak on amd drivers, and /that's/ why this crashes... not sure tho.
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 60; i++) {
             M3 = std::move(M3 * M3);
         }
         M3.pullData();
-    }
-    if (M3 != M1) {
-        std::cout << "Sadly, 'tis inaccurate" << std::endl;
     }
     int chained_t2 = (int) chain_tests.getMicrosecondsElapsed() / 1000;
     if (verbose) {
