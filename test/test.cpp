@@ -232,7 +232,7 @@ void CheckSpeed(std::string logfile, bool verbose) {
     if (verbose) {
         printf("Finished CPU only chained multiplication after %d milliseconds\n", (int) chain_tests.getMicrosecondsElapsed() / 1000);
     }
-    log << "Finished CPU only chained multiplication after" << chain_tests.getMicrosecondsElapsed() / 1000 << " milliseconds" << std::endl;
+    log << "Finished CPU only chained multiplication after " << chain_tests.getMicrosecondsElapsed() / 1000 << " milliseconds" << std::endl;
     chain_tests.start();
     {
         Timer t("Chained GPU multiplications (data pull each round)");
