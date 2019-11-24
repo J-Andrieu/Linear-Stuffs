@@ -178,6 +178,8 @@ int main (int argc, char* argv[]) {
         Timers::setLogFile(params.log_file);
         Timers::logNamedTimers();
     }
+    
+    LinAlgo::BreakDownGPU();
 
     return 0;
 }
@@ -283,41 +285,29 @@ size_t testGPUvsCPUSpeed(std::ofstream& log, bool verbose, std::string test) {
             std::cout << "Trying " << dim << "x" << dim << " matrix..." << std::endl;
         }
         gpuMatrix = LinAlgo::matrix<double>(dim, dim);
-        try {
-            gpuMatrix.useGPU(true);
-        } catch (std::exception& e) {
-            log << "GPU initialization failed for gpuMatrix." << std::endl;
-            log << "Error: " << e.what() << std::endl;
-            return 0;
-        }
+        gpuMatrix.useGPU(true);
         cpuMatrix = LinAlgo::matrix<double>(dim, dim);
         LinAlgo::matrix<double> junkResult(0, 0);
         for (auto i = gpuMatrix.begin(), j = cpuMatrix.begin(); i <= gpuMatrix.end(); i++, j++) {
             *i = static_cast<double>(rand());
             *j = static_cast<double>(rand());
         }
-        try {
-            gpuMatrix.pushData();
-            if (test == "addition") {
-                Timer cpu;
-                junkResult = cpuMatrix + cpuMatrix;
-                cpuTime = cpu.getMicrosecondsElapsed();
-                Timer gpu;
-                junkResult = gpuMatrix + gpuMatrix;
-                gpuTime = gpu.getMicrosecondsElapsed();
-            }
-            if (test == "multiplication") {
-                Timer cpu;
-                junkResult = cpuMatrix * cpuMatrix;
-                cpuTime = cpu.getMicrosecondsElapsed();
-                Timer gpu;
-                junkResult = gpuMatrix * gpuMatrix;
-                gpuTime = gpu.getMicrosecondsElapsed();
-            }
-        } catch (std::exception& e) {
-            log << "GPU initialization failed for gpuMatrix." << std::endl;
-            log << "Error: " << e.what() << std::endl;
-            keepTrying = false;
+        gpuMatrix.pushData();
+        if (test == "addition") {
+            Timer cpu;
+            junkResult = cpuMatrix + cpuMatrix;
+            cpuTime = cpu.getMicrosecondsElapsed();
+            Timer gpu;
+            junkResult = gpuMatrix + gpuMatrix;
+            gpuTime = gpu.getMicrosecondsElapsed();
+        }
+        if (test == "multiplication") {
+            Timer cpu;
+            junkResult = cpuMatrix * cpuMatrix;
+            cpuTime = cpu.getMicrosecondsElapsed();
+            Timer gpu;
+            junkResult = gpuMatrix * gpuMatrix;
+            gpuTime = gpu.getMicrosecondsElapsed();
         }
         if (verbose) {
             std::cout << "GPU time: " << gpuTime << std::endl;
@@ -328,7 +318,7 @@ size_t testGPUvsCPUSpeed(std::ofstream& log, bool verbose, std::string test) {
             log << "CPU time: " << cpuTime << std::endl;
         }
         dim += 10;
-    } while (gpuTime > cpuTime && keepTrying && dim < 1500);
+    } while (gpuTime > cpuTime && dim < 1500);
 
     if (!keepTrying) {
         if (verbose) {

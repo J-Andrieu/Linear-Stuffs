@@ -235,13 +235,13 @@ namespace LinAlgo {
             NUM_TYPES
         } KernelType;
 
-        cl::Kernel m_charKernels[Kernel::NUM_KERNELS];
-        cl::Kernel m_shortKernels[Kernel::NUM_KERNELS];
-        cl::Kernel m_intKernels[Kernel::NUM_KERNELS];
-        cl::Kernel m_longKernels[Kernel::NUM_KERNELS];
-        cl::Kernel m_floatKernels[Kernel::NUM_KERNELS];
-        cl::Kernel m_doubleKernels[Kernel::NUM_KERNELS];
-        cl::Kernel* m_kernels[KernelType::NUM_TYPES] = { m_charKernels, m_shortKernels, m_intKernels, m_longKernels, m_floatKernels, m_doubleKernels };
+        cl::Kernel* m_charKernels;
+        cl::Kernel* m_shortKernels;
+        cl::Kernel* m_intKernels;
+        cl::Kernel* m_longKernels;
+        cl::Kernel* m_floatKernels;
+        cl::Kernel* m_doubleKernels;
+        cl::Kernel** m_kernels;
 
         std::vector<cl::Platform> m_platforms;
         cl::Platform m_default_platform;
@@ -421,15 +421,30 @@ static cl_int LinAlgo::InitGPU() {
     if (GPU_INITIALIZED)
     { return CL_SUCCESS; }
 
+    m_charKernels = new cl::Kernel[Kernel::NUM_KERNELS];
+    m_shortKernels = new cl::Kernel[Kernel::NUM_KERNELS];
+    m_intKernels = new cl::Kernel[Kernel::NUM_KERNELS];
+    m_longKernels = new cl::Kernel[Kernel::NUM_KERNELS];
+    m_floatKernels = new cl::Kernel[Kernel::NUM_KERNELS];
+    m_doubleKernels = new cl::Kernel[Kernel::NUM_KERNELS];
+    m_kernels = new cl::Kernel*[KernelType::NUM_TYPES];
+    m_kernels[KernelType::CHAR] = m_charKernels;
+    m_kernels[KernelType::SHORT] = m_shortKernels;
+    m_kernels[KernelType::INT] = m_intKernels;
+    m_kernels[KernelType::LONG] = m_longKernels;
+    m_kernels[KernelType::FLOAT] = m_floatKernels;
+    m_kernels[KernelType::DOUBLE] = m_doubleKernels;
+    
     cl_int ret;
     
-    //get platform and device information
+    //get the platforms 
     ret = cl::Platform::get(&m_platforms);
     if (ret != CL_SUCCESS) {
         throw(gpu_exception(std::string("Unable to load platform IDs") + LinAlgo::getErrorString(ret), __FILE__, __LINE__, ret));
     }
     m_default_platform = m_platforms[0];
     
+    //get the devices
     m_default_platform.getDevices(CL_DEVICE_TYPE_GPU, &m_devices);
     if (m_devices.size() == 0) {
         ret = m_default_platform.getDevices(CL_DEVICE_TYPE_CPU, &m_devices);
@@ -520,11 +535,10 @@ static bool LinAlgo::BreakDownGPU() {
 
     //delete all the kernels. Everything else can clean itself up.
     for (size_t type = 0; type < KernelType::NUM_TYPES; type++) {
-        for (size_t kernel = 0; kernel < Kernel::NUM_KERNELS; kernel++) {
-            delete &m_kernels[type][kernel];
-            m_kernels[type][kernel] = NULL;
-        }
+        delete[] m_kernels[type];
     }
+    delete[] m_kernels;
+    m_kernels = NULL;
 
     return true;
 }
