@@ -18,10 +18,13 @@
 
 #ifndef DONT_USE_GPU
 #define CL_USE_DEPRECATED_OPENCL_1_2_APIS //just in case somone has OpenCL 1.2
+#define CL_HPP_ENABLE_EXCEPTIONS
+#define CL_HPP_TARGET_OPENCL_VERSION 200
+#define CL_HPP_MINIMUM_OPENCL_VERSION 120
 #ifdef _WIN32
-#include <CL\cl.h>
+#include <CL\cl2.hpp>
 #else
-#include <CL/cl.h>
+#include <CL/cl2.hpp>
 #endif
 #endif
 
@@ -123,14 +126,9 @@ namespace LinAlgo {
     public:
         gpu_exception(std::string msg, const char* _file, int _line, cl_int err) : m_what(msg), m_file(_file), m_error(err) {
             m_line = std::to_string(_line);
-            m_log = NULL;
         }
 
-        ~gpu_exception() {
-            free(m_log);
-        }
-
-        void setLog(char* log) {
+        void setLog(std::string log) {
             m_log = log;
         }
 
@@ -150,15 +148,15 @@ namespace LinAlgo {
             return m_error;
         }
 
-        char* getLog() {
-            return m_log;
+        const char* getLog() {
+            return m_log.c_str();
         }
 
     private:
         std::string m_what;
         std::string m_file;
         std::string m_line;
-        char* m_log;
+        std::string m_log;
         cl_int m_error;
     };
 
@@ -186,7 +184,7 @@ namespace LinAlgo {
 #ifndef DONT_USE_GPU
 //private functions
         //auxillary function for loading kernel files and returning a program
-        cl_program create_program (std::string filename, cl_context context, cl_int* errcode_ret) {
+        cl::Program create_program (std::string filename, cl::Context* context, cl_int* errcode_ret) {
             //first load the source code
             std::ifstream file;
             file.open (filename.c_str(), std::ios::in);
@@ -199,46 +197,14 @@ namespace LinAlgo {
                 kernel_src += line;
                 kernel_src += '\n';
             }
-            //printf("Kernel source: \n%s", kernel_src.c_str());
-            const size_t* kernel_size = new size_t (kernel_src.size());
-            //if (kernel_size == 0) {
-            //  printf("Did not load kernel!\n");
-            //}
-            const char* kernel_str = kernel_src.c_str();
             file.close();
+            
+            //cretea Sources obect
+            cl::Program::Sources sources;
+            sources.push_back({kernel_src.c_str(), kernel_src.length()});
 
-            //then create the program
-            cl_program program = clCreateProgramWithSource (context, 1, &kernel_str, kernel_size, errcode_ret);
-            return program;
-        }
-
-        float getPlatformVersion (cl_platform_id platform_id) {
-            //evaluate opencl version
-            size_t VERSION_LENGTH = 64;
-            char complete_version[VERSION_LENGTH];
-            size_t realSize = 0;
-            clGetPlatformInfo (platform_id, CL_PLATFORM_VERSION, VERSION_LENGTH,
-                               &complete_version, &realSize);
-            char version[4];
-            version[3] = 0;
-            std::copy (complete_version + 7, complete_version + 11, version);
-            return atof (version);
-        }
-
-        int choosePlatform (cl_platform_id* platform_id, size_t numPlatforms, float preferredOCLVersion) {
-            float versions[numPlatforms];
-            for (size_t i = 0; i < numPlatforms; i++) {
-                versions[i] = getPlatformVersion (platform_id[i]);
-                if (versions[i] == preferredOCLVersion) {
-                    return i;
-                }
-            }
-            for (size_t i = 0; i < numPlatforms; i++) {
-                if (std::floor (versions[i]) == std::floor (preferredOCLVersion)) {
-                    return i;
-                }
-            }
-            return 0;
+            //create and return the program
+            return cl::Program(*context, sources, errcode_ret);
         }
 
 //private variables
@@ -269,18 +235,20 @@ namespace LinAlgo {
             NUM_TYPES
         } KernelType;
 
-        cl_kernel m_charKernels[Kernel::NUM_KERNELS] = { NULL };
-        cl_kernel m_shortKernels[Kernel::NUM_KERNELS] = { NULL };
-        cl_kernel m_intKernels[Kernel::NUM_KERNELS] = { NULL };
-        cl_kernel m_longKernels[Kernel::NUM_KERNELS] = { NULL };
-        cl_kernel m_floatKernels[Kernel::NUM_KERNELS] = { NULL };
-        cl_kernel m_doubleKernels[Kernel::NUM_KERNELS] = { NULL };
-        cl_kernel* m_Kernels[KernelType::NUM_TYPES] = { m_charKernels, m_shortKernels, m_intKernels, m_longKernels, m_floatKernels, m_doubleKernels };
+        cl::Kernel m_charKernels[Kernel::NUM_KERNELS];
+        cl::Kernel m_shortKernels[Kernel::NUM_KERNELS];
+        cl::Kernel m_intKernels[Kernel::NUM_KERNELS];
+        cl::Kernel m_longKernels[Kernel::NUM_KERNELS];
+        cl::Kernel m_floatKernels[Kernel::NUM_KERNELS];
+        cl::Kernel m_doubleKernels[Kernel::NUM_KERNELS];
+        cl::Kernel* m_kernels[KernelType::NUM_TYPES] = { m_charKernels, m_shortKernels, m_intKernels, m_longKernels, m_floatKernels, m_doubleKernels };
 
-        cl_platform_id* m_platform_id = NULL;
-        cl_device_id m_device_id = NULL;
-        cl_context m_context = NULL;
-        cl_command_queue m_command_queue = NULL;
+        std::vector<cl::Platform> m_platforms;
+        cl::Platform m_default_platform;
+        std::vector<cl::Device> m_devices;
+        cl::Device m_default_device;
+        cl::Context m_context;
+        cl::CommandQueue m_command_queue;
 #endif // DONT_USE_GPU
     }
 }
@@ -453,43 +421,26 @@ static cl_int LinAlgo::InitGPU() {
     if (GPU_INITIALIZED)
     { return CL_SUCCESS; }
 
+    cl_int ret;
+    
     //get platform and device information
-    cl_uint ret_num_devices = 0;
-    cl_uint ret_num_platforms = 0;
-    cl_int ret = clGetPlatformIDs (0, NULL, &ret_num_platforms);
-    m_platform_id = new cl_platform_id[ret_num_platforms];
-    ret = clGetPlatformIDs (ret_num_platforms, m_platform_id, &ret_num_platforms);
+    ret = cl::Platform::get(&m_platforms);
     if (ret != CL_SUCCESS) {
         throw(gpu_exception("Unable to load platform IDs", __FILE__, __LINE__, ret));
     }
-    int platform_index = choosePlatform (m_platform_id, ret_num_platforms, 2.2);
-    OPENCL_VERSION = getPlatformVersion (m_platform_id[platform_index]);
-    //printf ("The chosen platform version is %f\n", OPENCL_VERSION);
-    //if (OPENCL_VERSION < 2.0) {
-    //    printf ("Warning: Opencl 1.x functions are not required to be implemented,\nFunctions such as clCreateQueue() which only changed names between versions may cause issues.\n");
-    //}
-    ret = clGetDeviceIDs (m_platform_id[platform_index], CL_DEVICE_TYPE_GPU, 0, NULL, &ret_num_devices);
-    if (ret_num_devices == 0) {
-        ret = clGetDeviceIDs (m_platform_id[platform_index], CL_DEVICE_TYPE_CPU, 0, NULL, &ret_num_devices);
-        if (ret_num_devices == 0) {
-            throw(gpu_exception("No OpenCL devices available", __FILE__, __LINE__, ret));
-            return ret;
-        } else {
-            //printf ("CPU device chosen\n");
-            ret = clGetDeviceIDs (m_platform_id[platform_index], CL_DEVICE_TYPE_CPU, 1, &m_device_id, &ret_num_devices);
-        }
-    } else {
-        //printf ("GPU device chosen\n");
-        ret = clGetDeviceIDs (m_platform_id[platform_index], CL_DEVICE_TYPE_GPU, 1, &m_device_id, &ret_num_devices);
+    m_default_platform = m_platforms[0];
+    
+    m_default_platform.getDevices(CL_DEVICE_TYPE_GPU, &m_devices);
+    if (m_devices.size() == 0) {
+        ret = m_default_platform.getDevices(CL_DEVICE_TYPE_CPU, &m_devices);
     }
-
     if (ret != CL_SUCCESS) {
         throw(gpu_exception("Unable to get device IDs", __FILE__, __LINE__, ret));
         return ret;
     }
 
     //create the context
-    m_context = clCreateContext (NULL, 1, &m_device_id, NULL, NULL, &ret);
+    m_context = cl::Context({m_default_device}, NULL, NULL, NULL, &ret);
     if (ret != CL_SUCCESS) {
         throw(gpu_exception("Unable to create context", __FILE__, __LINE__, ret));
     }
@@ -504,7 +455,7 @@ static cl_int LinAlgo::InitGPU() {
     #else
     std::string kernel_directory = "../kernels/";
     #endif
-    cl_program* programs = new cl_program[KernelType::NUM_TYPES];
+    std::vector<cl::Program> programs(KernelType::NUM_TYPES);
     std::vector<std::string> type_str ({ "char", "short", "int", "long", "float", "double" });
     for (size_t type = 0; type < KernelType::NUM_TYPES; type++) {
         //printf("The kernel file name is: %s\n", std::string(kernel_directory + std::string("matrix_kernels_") + type_str[type] + std::string(".cl")).c_str());
@@ -512,7 +463,7 @@ static cl_int LinAlgo::InitGPU() {
                                          std::string ("matrix_kernels_") +
                                          type_str[type] +
                                          std::string (".cl"),
-                                         m_context,
+                                         &m_context,
                                          &ret);
         if (ret != CL_SUCCESS) {
             throw(gpu_exception("Unable to create program", __FILE__, __LINE__, ret));
@@ -521,22 +472,11 @@ static cl_int LinAlgo::InitGPU() {
 
     //now build the programs
     for (size_t type = 0; type < KernelType::NUM_TYPES; type++) {
-        ret = clBuildProgram (programs[type], 1, &m_device_id, NULL, NULL, NULL);
+        ret = programs[type].build({m_default_device});
         if (ret != CL_SUCCESS) {
-            gpu_exception ouch(std::string("program ") + type_str[type] + std::string(" build unsiccessful"), __FILE__, __LINE__, ret);
+            gpu_exception ouch(std::string("program ") + type_str[type] + std::string(" build unsuccessful"), __FILE__, __LINE__, ret);
             if (ret == CL_BUILD_PROGRAM_FAILURE) {
-                // Determine the size of the log
-                size_t log_size;
-                clGetProgramBuildInfo (programs[type], m_device_id, CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size);
-
-                // Allocate memory for the log
-                char* log = (char*)malloc (log_size);
-
-                // Get the log
-                clGetProgramBuildInfo (programs[type], m_device_id, CL_PROGRAM_BUILD_LOG, log_size, log, NULL);
-
-                // Printvoid CheckAccuracy(size_t height, size_t width, std::string logfile, bool verbose);
-                ouch.setLog(log);
+                ouch.setLog(programs[type].getBuildInfo<CL_PROGRAM_BUILD_LOG>(m_default_device));
             }
             throw(ouch);
         }
@@ -547,29 +487,18 @@ static cl_int LinAlgo::InitGPU() {
     for (size_t type = 0; type < KernelType::NUM_TYPES; type++) {
         //printf("Generating kernels for type: %s\n", type_str[type].c_str());
         for (size_t kernel = 0; kernel < Kernel::NUM_KERNELS; kernel++) {
-            m_Kernels[type][kernel] = clCreateKernel (programs[type], kernelNames[kernel].c_str(), &ret);
+            m_kernels[type][kernel] = cl::Kernel(programs[type], kernelNames[kernel].c_str(), &ret);
             if (ret != CL_SUCCESS) {
                 throw(gpu_exception(std::string("Could not create kernel. Kernel name: ") + kernelNames[kernel] + std::string(", type: ") + type_str[type].c_str(), __FILE__, __LINE__, ret));
             }
         }
     }
 
-    //free the programs since I don't need those anymore
-    for (size_t type = 0; type < KernelType::NUM_TYPES; type++) {
-        clReleaseProgram (programs[type]);
-    }
-    delete[] programs;
-
     //create namespace command queue
-    if (OPENCL_VERSION >= 2.0) {
-        m_command_queue = clCreateCommandQueueWithProperties (m_context, m_device_id, 0, &ret);
-    } else {
-        m_command_queue = clCreateCommandQueue (m_context, m_device_id, 0, &ret);
-    }
+    m_command_queue = cl::CommandQueue(m_context, m_default_device);
     if (ret != CL_SUCCESS) {
         throw(LinAlgo::gpu_exception(std::string("Unable to create command queue, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
     }
-    ret = clRetainCommandQueue(m_command_queue);//idk abt thi, but whatevs
 
     //le done :P
     GPU_INITIALIZED = true;
@@ -588,21 +517,13 @@ static bool LinAlgo::BreakDownGPU() {
     GPU_INITIALIZED = false;
     ALL_USE_GPU = false;
 
+    //delete all the kernels. Everything else can clean itself up.
     for (size_t type = 0; type < KernelType::NUM_TYPES; type++) {
         for (size_t kernel = 0; kernel < Kernel::NUM_KERNELS; kernel++) {
-            clReleaseKernel (m_Kernels[type][kernel]);
-            m_Kernels[type][kernel] = NULL;
+            delete &m_kernels[type][kernel];
+            m_kernels[type][kernel] = NULL;
         }
     }
-
-    clReleaseDevice (m_device_id);
-    clReleaseContext (m_context);
-    clReleaseCommandQueue(m_command_queue);
-
-    m_platform_id = NULL;
-    m_device_id = NULL;
-    m_context = NULL;
-    m_command_queue = NULL;
 
     return true;
 }

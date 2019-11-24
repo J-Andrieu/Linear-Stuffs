@@ -55,9 +55,6 @@ matrix<ItemType>::matrix (const size_t& height, const size_t& width, const ItemT
         m_dataInitialized = false;
     }
     m_upToDate = 0;
-    if (m_useGPU) {
-        initQueue();
-    }
 }
 #else
 template <class ItemType>
@@ -100,9 +97,6 @@ matrix<ItemType>::matrix (const std::vector<std::vector<ItemType>>& vals) : m_us
     m_gpuSlicesUpToDate.resize (m_height, false);
     m_upToDate = 0;
     m_dataInitialized = true;
-    if (m_useGPU) {
-        initQueue();
-    }
 }
 #else
 template <class ItemType>
@@ -150,9 +144,6 @@ matrix<ItemType>::matrix (const ItemType** vals, const size_t& height, const siz
     m_gpuSlicesUpToDate.resize (m_height, false);
     m_upToDate = 0;
     m_dataInitialized = true;
-    if (m_useGPU) {
-        initQueue();
-    }
 }
 #else
 template <class ItemType>
@@ -186,10 +177,6 @@ matrix<ItemType>::matrix (const matrix<ArgType>& M) : m_useGPU (M.useGPU()), m_g
     m_width = M.getWidth();
     m_upToDate = 0;//this will defo be different later
     m_data.resize (m_height);
-    //it's up to the programmer to remember to pull data if they want it left on the gpu
-    //if (M.leaveDataOnGPU()) {
-    //    M.pullData();
-    //}
     for (size_t i = 0; i < m_height; i++) {
         m_data[i].resize(m_width);
         for (size_t j = 0; j < m_width; j++) {
@@ -200,9 +187,6 @@ matrix<ItemType>::matrix (const matrix<ArgType>& M) : m_useGPU (M.useGPU()), m_g
         m_dataInitialized = true;
     } else {
         m_dataInitialized = false;
-    }
-    if (m_useGPU) {
-        initQueue();
     }
 }
 #else
@@ -246,9 +230,6 @@ matrix<ItemType>::matrix (const matrix<ItemType>& M) : m_useGPU (M.m_useGPU), m_
         }
     }
     m_dataInitialized = M.m_dataInitialized;
-    if (m_useGPU) {
-        initQueue();
-    }
 }
 #else
 template <class ItemType>
@@ -281,7 +262,6 @@ matrix<ItemType>::matrix (matrix<ItemType>&& M) : m_useGPU (M.m_useGPU), m_gpuUp
     m_data = std::move(M.m_data);
     m_dataInitialized = M.m_dataInitialized;
     M.m_gpuData = NULL;
-    //M.m_command_queue = NULL;
     M.m_gpuHeight = NULL;
     M.m_gpuWidth = NULL;
 }
@@ -303,17 +283,14 @@ matrix<ItemType>::matrix (matrix<ItemType>&& M) {
 template <class ItemType>
 matrix<ItemType>::~matrix() {
 #ifndef DONT_USE_GPU
-    if (m_command_queue != NULL) {
-        //clReleaseCommandQueue(m_command_queue);
-    }
     if (m_gpuData != NULL) {
-        clReleaseMemObject(m_gpuData);
+        delete m_gpuData;
     }
     if (m_gpuHeight != NULL) {
-        clReleaseMemObject(m_gpuHeight);
+        delete m_gpuHeight;
     }
     if (m_gpuWidth != NULL) {
-        clReleaseMemObject(m_gpuWidth);
+        delete m_gpuWidth;
     }
 #endif
 }
@@ -372,35 +349,10 @@ template <class ItemType>
 bool matrix<ItemType>::useGPU (bool use_it) {
     if (GPU_INITIALIZED) {
         m_useGPU = use_it;
-        if (!m_useGPU) {
-            if (m_leaveOnGPU) {
-                pullFromGPU(m_command_queue);
-                m_leaveOnGPU = false;
-            }
-            //maybe this shouldn't just erase the gpu data
-            //if (m_command_queue) {
-            //    clReleaseCommandQueue (m_command_queue);
-            //    m_command_queue = NULL;
-            //}
-            //if (m_gpuData) {
-            //    clReleaseMemObject (m_gpuData);
-            //    m_gpuData = NULL;
-            //}
-            //if (m_gpuHeight || m_gpuWidth) {
-            //    clReleaseMemObject (m_gpuHeight);
-            //    clReleaseMemObject (m_gpuWidth);
-            //    m_gpuHeight = NULL;
-            //    m_gpuWidth = NULL;
-            //}
-            //m_gpuUpToDate = false;
-            //m_gpuSlicesUpToDate.clear();
-            //m_gpuSlicesUpToDate.resize (m_height, false);
-            //m_upToDate |= ! (dataFlag::GPU_HEIGHT | dataFlag::GPU_WIDTH | dataFlag::GPU_DATA);
-        } else {
-            if (m_command_queue == NULL) {
-                //initQueue();
-            }
-        }
+        if (!m_useGPU && m_leaveOnGPU) {
+            pullFromGPU( );
+            m_leaveOnGPU = false;
+        } 
         return true;
     }
     return false;
@@ -568,7 +520,7 @@ matrix<ItemType>& matrix<ItemType>::resize (size_t height, size_t width, ItemTyp
 #ifndef DONT_USE_GPU
         m_upToDate &= !dataFlag::GPU_HEIGHT;
         m_gpuSlicesUpToDate.resize (height, false);
-        clReleaseMemObject (m_gpuHeight);
+        delete m_gpuHeight;
         m_gpuHeight = NULL;
 #endif
     }
@@ -578,7 +530,7 @@ matrix<ItemType>& matrix<ItemType>::resize (size_t height, size_t width, ItemTyp
         }
 #ifndef DONT_USE_GPU
         m_upToDate &= !dataFlag::GPU_WIDTH;
-        clReleaseMemObject (m_gpuWidth);
+        delete m_gpuWidth;
         m_gpuWidth = NULL;
 #endif
     }
@@ -590,7 +542,7 @@ matrix<ItemType>& matrix<ItemType>::resize (size_t height, size_t width, ItemTyp
     } else {
         m_dataInitialized = true;
     }
-    clReleaseMemObject (m_gpuData);
+    delete m_gpuData;
     m_gpuData = NULL;
     m_upToDate &= !dataFlag::GPU_DATA;
     m_gpuSlicesUpToDate.clear();
@@ -617,7 +569,7 @@ matrix<ItemType>& matrix<ItemType>::copy (size_t y, size_t x, matrix<ItemType> M
         }
     }
 #ifndef DONT_USE_GPU
-    clReleaseMemObject (m_gpuData);
+    delete m_gpuData;
     m_gpuData = NULL;
     m_upToDate &= !dataFlag::GPU_DATA;
     m_gpuSlicesUpToDate.clear();
@@ -734,7 +686,7 @@ bool matrix<ItemType>::pullData() {
     if (!m_useGPU) {
         return false;
     }
-    cl_int ret = pullFromGPU(m_command_queue);
+    cl_int ret = pullFromGPU( );
     return ret == CL_SUCCESS;
 }
 
@@ -746,7 +698,7 @@ bool matrix<ItemType>::pushData() {
     if (!m_useGPU) {
         return false;
     }
-    cl_int ret = pushToGPU(m_command_queue);
+    cl_int ret = pushToGPU( );
     return ret == CL_SUCCESS;
 }
 #endif
@@ -787,7 +739,7 @@ matrix<ItemType> matrix<ItemType>::add (matrix<ArgType>& M) {
     }
     if (! (m_useGPU || ALL_USE_GPU)) { //if don't use the gpu
         if (M.m_leaveOnGPU && M.m_useGPU) {
-            M.pullFromGPU(m_command_queue);
+            M.pullFromGPU( );
         }
 #else
         matrix<ItemType> result (m_height < M.m_height ? m_height : M.m_height, m_width < M.m_width ? m_width : M.m_width);
@@ -802,11 +754,10 @@ matrix<ItemType> matrix<ItemType>::add (matrix<ArgType>& M) {
     } else {
         if (!GPU_INITIALIZED) {
             throw(LinAlgo::gpu_exception("GPU is not initialized", __FILE__, __LINE__, -99));
-            //return matrix<ItemType>;
         }
-        pushToGPU (m_command_queue);
-        M.pushToGPU (m_command_queue);
-        result.createResultBuffer (m_command_queue);
+        pushToGPU ( );
+        M.pushToGPU ( );
+        result.createResultBuffer ( );
         if (std::is_same<ItemType, ArgType>::value) {
             cl_int ret; //i'm not even kinda checking this rn, but maybe i will later :P
             if (std::is_same<ItemType, char>::value) {
@@ -828,7 +779,7 @@ matrix<ItemType> matrix<ItemType>::add (matrix<ArgType>& M) {
             throw(LinAlgo::gpu_exception("Can't GPU compute, matrices are of differing types", __FILE__, __LINE__, -99));
         }
         if (!result.m_leaveOnGPU) {
-            result.pullFromGPU (m_command_queue);
+            result.pullFromGPU ( );
         }
         return result;
     }
@@ -868,10 +819,9 @@ matrix<ItemType> matrix<ItemType>::add (const ArgType& val) {
     } else {
         if (!GPU_INITIALIZED) {
             throw(LinAlgo::gpu_exception("GPU is not initialized", __FILE__, __LINE__, -99));
-            //return matrix<ItemType>;
         }
-        pushToGPU (m_command_queue);
-        result.createResultBuffer (m_command_queue);
+        pushToGPU ( );
+        result.createResultBuffer ( );
         cl_int ret; //i'm not even kinda checking this rn, but maybe i will later :P
         if (std::is_same<ItemType, char>::value) {
             ret = execute_array_val_kernel (m_charKernels[Kernel::ADD_SCALAR], (ItemType &) val, result);
@@ -889,7 +839,7 @@ matrix<ItemType> matrix<ItemType>::add (const ArgType& val) {
             throw(LinAlgo::gpu_exception("Can't GPU compute, unsupported item type", __FILE__, __LINE__, -99));
         }
         if (!result.m_leaveOnGPU) {
-            result.pullFromGPU (m_command_queue);
+            result.pullFromGPU ( );
         }
         return result;
     }
@@ -946,7 +896,7 @@ matrix<ItemType> matrix<ItemType>::subtract (matrix<ArgType>& M) {
     }
     if (! (m_useGPU || ALL_USE_GPU)) { //if don't use the gpu
         if (M.m_leaveOnGPU && M.m_useGPU) {
-            M.pullFromGPU(m_command_queue);
+            M.pullFromGPU( );
         }
 #else
     matrix<ItemType> result (m_height < M.m_height ? m_height : M.m_height, m_width < M.m_width ? m_width : M.m_width);
@@ -961,11 +911,10 @@ matrix<ItemType> matrix<ItemType>::subtract (matrix<ArgType>& M) {
     } else {
         if (!GPU_INITIALIZED) {
             throw(LinAlgo::gpu_exception("GPU is not initialized", __FILE__, __LINE__, -99));
-            //return matrix<ItemType>;
         }
-        pushToGPU (m_command_queue);
-        M.pushToGPU (m_command_queue); //if this matrix isn't supposed to use gpu, should I unpush its data after this?
-        result.createResultBuffer (m_command_queue);
+        pushToGPU ( );
+        M.pushToGPU ( ); 
+        result.createResultBuffer ( );
         if (std::is_same<ItemType, ArgType>::value) {
             cl_int ret; //i'm not even kinda checking this rn, but maybe i will later :P
             if (std::is_same<ItemType, char>::value) {
@@ -987,7 +936,7 @@ matrix<ItemType> matrix<ItemType>::subtract (matrix<ArgType>& M) {
             throw(LinAlgo::gpu_exception("Can't GPU compute, matrices are of differing types", __FILE__, __LINE__, -99));
         }
         if (!result.m_leaveOnGPU) {
-            result.pullFromGPU (m_command_queue);
+            result.pullFromGPU ( );
         }
         return result;
     }
@@ -1029,10 +978,9 @@ matrix<ItemType> matrix<ItemType>::subtract (const ArgType& val) {
     } else {
         if (!GPU_INITIALIZED) {
             throw(LinAlgo::gpu_exception("GPU is not initialized", __FILE__, __LINE__, -99));
-            //return matrix<ItemType>;
         }
-        pushToGPU (m_command_queue);
-        result.createResultBuffer (m_command_queue);
+        pushToGPU ( );
+        result.createResultBuffer ( );
         cl_int ret; //i'm not even kinda checking this rn, but maybe i will later :P
         if (std::is_same<ItemType, char>::value) {
             ret = execute_array_val_kernel (m_charKernels[Kernel::SUB_SCALAR], (ItemType&) val, result);
@@ -1050,7 +998,7 @@ matrix<ItemType> matrix<ItemType>::subtract (const ArgType& val) {
             throw(LinAlgo::gpu_exception("Can't GPU compute, unsupported item type", __FILE__, __LINE__, -99));
         }
         if (!result.m_leaveOnGPU) {
-            result.pullFromGPU (m_command_queue);
+            result.pullFromGPU ( );
         }
         return result;
     }
@@ -1098,7 +1046,6 @@ matrix<ItemType> matrix<ItemType>::multiply (matrix<ArgType>& M) {
     if (m_width != M.m_height) {
         throw(std::runtime_error(std::string("The dimensions ") + std::to_string(m_height) + std::string("x") + std::to_string(m_width) + std::string(" and ") +
                                  std::to_string(M.m_height) + std::string("x") + std::to_string(M.m_width) + std::string(" are mismatched.")));
-        //return matrix<ItemType>; //null matrix
     }
 #ifndef DONT_USE_GPU
     matrix<ItemType> result;
@@ -1113,7 +1060,7 @@ matrix<ItemType> matrix<ItemType>::multiply (matrix<ArgType>& M) {
     }
     if (! (m_useGPU || ALL_USE_GPU)) { //if don't use the gpu
         if (M.m_leaveOnGPU && M.m_useGPU) {
-            M.pullFromGPU(m_command_queue);
+            M.pullFromGPU( );
         }
 #else
     matrix<ItemType> result (m_height, M.m_width);
@@ -1132,11 +1079,10 @@ matrix<ItemType> matrix<ItemType>::multiply (matrix<ArgType>& M) {
     } else {
         if (!GPU_INITIALIZED) {
             throw(LinAlgo::gpu_exception("GPU is not initialized", __FILE__, __LINE__, -99));
-            //return matrix<ItemType>;
         }
-        pushToGPU (m_command_queue);
-        M.pushToGPU (m_command_queue);
-        result.createResultBuffer (m_command_queue);
+        pushToGPU ( );
+        M.pushToGPU ( );
+        result.createResultBuffer ( );
         if (std::is_same<ItemType, ArgType>::value) {
             cl_int ret;
             if (std::is_same<ItemType, char>::value) {
@@ -1161,7 +1107,7 @@ matrix<ItemType> matrix<ItemType>::multiply (matrix<ArgType>& M) {
             throw(LinAlgo::gpu_exception("Can't GPU compute, matrices are of differing types", __FILE__, __LINE__, -99));
         }
         if (!result.m_leaveOnGPU) {
-            result.pullFromGPU (m_command_queue);
+            result.pullFromGPU ( );
         }
         return result;
     }
@@ -1203,10 +1149,9 @@ matrix<ItemType> matrix<ItemType>::multiply (const ArgType& val) {
     } else {
         if (!GPU_INITIALIZED) {
             throw(LinAlgo::gpu_exception("GPU is not initialized", __FILE__, __LINE__, -99));
-            //return matrix<ItemType>;
         }
-        pushToGPU (m_command_queue);
-        result.createResultBuffer (m_command_queue);
+        pushToGPU ( );
+        result.createResultBuffer ( );
         cl_int ret; //i'm not even kinda checking this rn, but maybe i will later :P
         if (std::is_same<ItemType, char>::value) {
             ret = execute_array_val_kernel (m_charKernels[Kernel::MULTIPLY_SCALAR], (ItemType&) val, result);
@@ -1224,7 +1169,7 @@ matrix<ItemType> matrix<ItemType>::multiply (const ArgType& val) {
             throw(LinAlgo::gpu_exception("Can't GPU compute, unsupported item type", __FILE__, __LINE__, -99));
         }
         if (!result.m_leaveOnGPU) {
-            result.pullFromGPU (m_command_queue);
+            result.pullFromGPU ( );
         }
         return result;
     }
@@ -1255,7 +1200,7 @@ matrix<ItemType> matrix<ItemType>::elementMultiply (matrix<ArgType>& M) {
     }
     if (! (m_useGPU || ALL_USE_GPU)) { //if don't use the gpu
         if (M.m_leaveOnGPU && M.m_useGPU) {
-            M.pullFromGPU(m_command_queue);
+            M.pullFromGPU( );
         }
 #else
     matrix<ItemType> result (m_height < M.m_height ? m_height : M.m_height, m_width < M.m_width ? m_width : M.m_width);
@@ -1270,11 +1215,10 @@ matrix<ItemType> matrix<ItemType>::elementMultiply (matrix<ArgType>& M) {
     } else {
         if (!GPU_INITIALIZED) {
             throw(LinAlgo::gpu_exception("GPU is not initialized", __FILE__, __LINE__, -99));
-            return matrix<ItemType> (0, 0);
         }
-        pushToGPU (m_command_queue);
-        M.pushToGPU (m_command_queue);
-        result.createResultBuffer (m_command_queue);
+        pushToGPU ( );
+        M.pushToGPU ( );
+        result.createResultBuffer ( );
         if (std::is_same<ItemType, ArgType>::value) {
             cl_int ret;
             if (std::is_same<ItemType, char>::value) {
@@ -1296,7 +1240,7 @@ matrix<ItemType> matrix<ItemType>::elementMultiply (matrix<ArgType>& M) {
             throw(LinAlgo::gpu_exception("Can't GPU compute, matrices are of differing types", __FILE__, __LINE__, -99));
         }
         if (!result.m_leaveOnGPU) {
-            result.pullFromGPU (m_command_queue);
+            result.pullFromGPU ( );
         }
         return result;
     }
@@ -1341,12 +1285,10 @@ matrix<ItemType> matrix<ItemType>::divide(matrix<ArgType>& M) {
     if (M.m_height != M.m_width) {
         throw(std::runtime_error(std::string("The dimensions ") + std::to_string(m_height) + std::string("x") + std::to_string(m_width) + std::string(" and ") +
                                  std::to_string(M.m_height) + std::string("x") + std::to_string(M.m_width) + std::string(" are mismatched.")));
-        //return matrix<ItemType>;
     }
     matrix<ArgType> invM = LinAlgo::inverse(M);
     if (invM.getHeight() == 0) {
         throw(std::runtime_error("Cannot divide by singular matrix"));
-        //return matrix<ItemType>;
     }
     return multiply(invM);
 }
@@ -1386,10 +1328,9 @@ matrix<ItemType> matrix<ItemType>::divide (const ArgType& val) {
     } else {
         if (!GPU_INITIALIZED) {
             throw(LinAlgo::gpu_exception("GPU is not initialized", __FILE__, __LINE__, -99));
-            return matrix<ItemType> (0, 0);
         }
-        pushToGPU (m_command_queue);
-        result.createResultBuffer (m_command_queue);
+        pushToGPU ( );
+        result.createResultBuffer ( );
         cl_int ret; //i'm not even kinda checking this rn, but maybe i will later :P
         if (std::is_same<ItemType, char>::value) {
             ret = execute_array_val_kernel (m_charKernels[Kernel::DIVIDE_SCALAR], (ItemType&) val, result);
@@ -1407,7 +1348,7 @@ matrix<ItemType> matrix<ItemType>::divide (const ArgType& val) {
             throw(LinAlgo::gpu_exception("Can't GPU compute, unsupported item type", __FILE__, __LINE__, -99));
         }
         if (!result.m_leaveOnGPU) {
-            result.pullFromGPU (m_command_queue);
+            result.pullFromGPU ( );
         }
         return result;
     }
@@ -1438,7 +1379,7 @@ matrix<ItemType> matrix<ItemType>::elementDivide (matrix<ArgType>& M) {
     }
     if (! (m_useGPU || ALL_USE_GPU)) { //if don't use the gpu
         if (M.m_leaveOnGPU && M.m_useGPU) {
-            M.pullFromGPU(m_command_queue);
+            M.pullFromGPU( );
         }
 #else
     matrix<ItemType> result (m_height < M.m_height ? m_height : M.m_height, m_width < M.m_width ? m_width : M.m_width);
@@ -1453,14 +1394,12 @@ matrix<ItemType> matrix<ItemType>::elementDivide (matrix<ArgType>& M) {
     } else {
         if (!GPU_INITIALIZED) {
             throw(LinAlgo::gpu_exception("GPU is not initialized", __FILE__, __LINE__, -99));
-            //return matrix<ItemType>;
         }
-        pushToGPU (m_command_queue);
-        M.pushToGPU (m_command_queue);
-        result.createResultBuffer (m_command_queue);
+        pushToGPU ( );
+        M.pushToGPU ( );
+        result.createResultBuffer ( );
         if (std::is_same<ItemType, ArgType>::value) {
             cl_int ret;
-
             if (std::is_same<ItemType, char>::value) {
                 ret = execute_multiply_kernel (m_charKernels[Kernel::DIVIDE_ELEMENT], M, result);
             } else if (std::is_same<ItemType, short>::value) {
@@ -1480,7 +1419,7 @@ matrix<ItemType> matrix<ItemType>::elementDivide (matrix<ArgType>& M) {
             throw(LinAlgo::gpu_exception("Can't GPU compute, matrices are of differing types", __FILE__, __LINE__, -99));
         }
         if (!result.m_leaveOnGPU) {
-            result.pullFromGPU (m_command_queue);
+            result.pullFromGPU ( );
         }
         return result;
     }
@@ -1674,21 +1613,19 @@ matrix<ItemType>& matrix<ItemType>::operator= (const matrix<ItemType>& M) {
 #ifndef DONT_USE_GPU
     if (GPU_INITIALIZED && (M.m_useGPU || ALL_USE_GPU) && (M.m_upToDate & dataFlag::GPU_DATA)) {
         if (!M.m_leaveOnGPU) {
-            //while (m_command_queue != NULL);
-            initQueue();
             if (m_gpuData) {
-                clReleaseMemObject (m_gpuData);
+                delete m_gpuData;
             }
             if (m_gpuHeight) {
-                clReleaseMemObject (m_gpuHeight);
+                delete m_gpuHeight;
             }
             if (m_gpuWidth) {
-                clReleaseMemObject (m_gpuWidth);
+                delete m_gpuWidth;
             }
             m_gpuData = M.m_gpuData;
             m_gpuHeight = M.m_gpuHeight;
             m_gpuWidth = M.m_gpuWidth;
-            pullFromGPU (m_command_queue);
+            pullFromGPU ( );
             //clReleaseCommandQueue (m_command_queue);
             //m_command_queue = NULL;
             m_gpuData = NULL;
@@ -1712,20 +1649,12 @@ matrix<ItemType>& matrix<ItemType>::operator= (const matrix<ItemType>& M) {
     m_gpuSlicesUpToDate.resize (m_height, false);
     m_upToDate = 0;//if eigenvalues and stuff get copied over, this will be different
     m_useGPU = M.m_useGPU;
-    if (m_command_queue) {
-        //clFinish (m_command_queue);
-        //m_command_queue = NULL;
-    }
     if (m_gpuData) {
-        clReleaseMemObject (m_gpuData);
+        delete m_gpuData;
         m_gpuData = NULL;
     }
     m_dataInitialized = M.m_dataInitialized;
-    if (m_useGPU) {
-        initQueue();
-    }
     m_leaveOnGPU = M.m_leaveOnGPU;
-    m_dataInitialized = M.m_dataInitialized;
 #endif
 
     //clear everything else that's now irrelevent (or copy things that are over lol)
@@ -1740,23 +1669,21 @@ matrix<ItemType>& matrix<ItemType>::operator= (matrix<ItemType>&& M) {
     m_height = M.m_height;
     m_width = M.m_width;
     m_data = std::move(M.m_data);
-    clFinish(m_command_queue);
 #ifndef DONT_USE_GPU
+    m_command_queue.finish();
     if (m_gpuData) {
-        clReleaseMemObject(m_gpuData);
+        delete m_gpuData;
     }
     m_gpuData = M.m_gpuData;
     M.m_gpuData = NULL;
-    //m_command_queue = M.m_command_queue;
-    //M.m_command_queue = NULL;
     if (m_gpuHeight) {
-        clReleaseMemObject(m_gpuHeight);
+        delete m_gpuHeight;
     }
     m_gpuHeight = M.m_gpuHeight;
     M.m_gpuHeight = NULL;
 
     if (m_gpuWidth) {
-        clReleaseMemObject(m_gpuWidth);
+        delete m_gpuWidth;
     }
     m_gpuWidth = M.m_gpuWidth;
     M.m_gpuWidth = NULL;
@@ -1807,29 +1734,22 @@ matrix<ItemType>& matrix<ItemType>::operator= (const matrix<ArgType>& M) {
     m_gpuSlicesUpToDate.resize (m_height, false);
     m_upToDate = 0;//if eigenvalues and stuff get copied over, this will be different
     m_useGPU = M.useGPU();
-    //if (m_command_queue) {
-    //    clFinish (m_command_queue);
-    //    m_command_queue = NULL;
-    //}
     if (m_gpuData) {
-        clReleaseMemObject (m_gpuData);
+        delete m_gpuData;
         m_gpuData = NULL;
     }
     if (m_gpuHeight) {
-        clReleaseMemObject (m_gpuHeight);
+        delete m_gpuHeight;
         m_gpuHeight = NULL;
     }
     if (m_gpuWidth) {
-        clReleaseMemObject (m_gpuWidth);
+        delete m_gpuWidth;
         m_gpuWidth = NULL;
     }
     if (m_width != 0 && m_height != 0) {
         m_dataInitialized = true;
     } else {
         m_dataInitialized = false;
-    }
-    if (m_useGPU) {
-        initQueue();
     }
 #endif
 
@@ -1894,69 +1814,44 @@ bool matrix<ItemType>::operator!= (const matrix<ArgType>& M) const {
 //private auxilliary function to initialize the OpenCL command queue
 
 /**
-* @brief This helper function initializes the OpenCL command queue for this matrix
-*
-* @note This function uses the OpenCL version foun during InitGPU() to determine
-* the appropriate command to create the queue
-*/
-template <class ItemType>
-cl_int matrix<ItemType>::initQueue() {
-    if (m_command_queue != NULL) {
-        return CL_SUCCESS;
-    }
-    //cl_int ret;
-    //if (OPENCL_VERSION >= 2.0) {
-    //    m_command_queue = clCreateCommandQueueWithProperties (m_context, m_device_id, 0, &ret);
-    //} else {
-    //    m_command_queue = clCreateCommandQueue (m_context, m_device_id, 0, &ret);
-    //}
-    //if (ret != CL_SUCCESS) {
-    //    throw(LinAlgo::gpu_exception(std::string("Unable to create command queue, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
-    //}
-    //ret = clRetainCommandQueue(m_command_queue);//idk abt thi, but whatevs
-    //return ret;
-    return CL_SUCCESS;
-}
-
-/**
 * @brief Private auxialliary function for creating an empty memory buffer to store result
 *
 * @param command_queue A command queue to use for writing to the GPU
 */
 template <class ItemType>
-cl_int matrix<ItemType>::createResultBuffer (cl_command_queue& command_queue) {
+cl_int matrix<ItemType>::createResultBuffer () {
     if (m_gpuData != NULL) {
-        clReleaseMemObject (m_gpuData);
+        delete m_gpuData;
     }
     if (m_gpuHeight != NULL) {
-        clReleaseMemObject (m_gpuHeight);
+        delete m_gpuHeight;
     }
     if (m_gpuWidth != NULL) {
-        clReleaseMemObject (m_gpuWidth);
+        delete m_gpuWidth;
     }
-
+    
     cl_int ret;
-    m_gpuData = clCreateBuffer (m_context, CL_MEM_READ_WRITE, m_height * m_width * sizeof (ItemType), NULL, &ret);
+    m_gpuData = new cl::Buffer(m_context, CL_MEM_READ_WRITE, m_height * m_width * sizeof (ItemType), NULL, &ret);
     if (ret != CL_SUCCESS) {
         throw(LinAlgo::gpu_exception(std::string("Unable to create memory buffer, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
     }
 
-    m_gpuHeight = clCreateBuffer (m_context, CL_MEM_READ_ONLY, sizeof (ItemType), NULL, &ret);
+    m_gpuHeight = new cl::Buffer(m_context, CL_MEM_READ_ONLY, sizeof (ItemType), NULL, &ret);
     if (ret != CL_SUCCESS) {
         throw(LinAlgo::gpu_exception(std::string("Unable to create memory buffer, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
     }
 
-    m_gpuWidth = clCreateBuffer (m_context, CL_MEM_READ_ONLY, sizeof (ItemType), NULL, &ret);
+    m_gpuWidth = new cl::Buffer(m_context, CL_MEM_READ_ONLY, sizeof (ItemType), NULL, &ret);
     if (ret != CL_SUCCESS) {
         throw(LinAlgo::gpu_exception(std::string("Unable to create memory buffer, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
     }
 
-    ret = clEnqueueWriteBuffer (command_queue, m_gpuHeight, CL_FALSE, 0, sizeof (ItemType), &m_height, 0, NULL, NULL);
+    ret = m_command_queue.enqueueWriteBuffer(*m_gpuHeight, CL_FALSE, 0, sizeof(ItemType), &m_height);
     if (ret != CL_SUCCESS) {
         throw(LinAlgo::gpu_exception(std::string("Unable to push data to GPU, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
     }
 
-    ret = clEnqueueWriteBuffer (command_queue, m_gpuWidth, CL_TRUE, 0, sizeof (ItemType), &m_width, 0, NULL, NULL);
+    ret = m_command_queue.enqueueWriteBuffer(*m_gpuWidth, CL_TRUE, 0, sizeof (ItemType), &m_width);
     if (ret != CL_SUCCESS) {
         throw(LinAlgo::gpu_exception(std::string("Unable to push data to GPU, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
     }
@@ -1971,7 +1866,7 @@ cl_int matrix<ItemType>::createResultBuffer (cl_command_queue& command_queue) {
 * @param command_queue The command queue to use for writing to the GPU
 */
 template <class ItemType>
-cl_int matrix<ItemType>::pushToGPU (cl_command_queue& command_queue) {
+cl_int matrix<ItemType>::pushToGPU () {
     if (m_gpuUpToDate && !m_leaveOnGPU) {
         return CL_SUCCESS;
     }
@@ -1986,27 +1881,27 @@ cl_int matrix<ItemType>::pushToGPU (cl_command_queue& command_queue) {
     }
 
     if (m_leaveOnGPU) {
-        createResultBuffer(command_queue);
+        createResultBuffer();
     }
 
     //create storage buffers if they for some reason don't exist
     cl_int ret;
-    if (!m_gpuData) {
-        m_gpuData = clCreateBuffer (m_context, CL_MEM_READ_WRITE, m_height * m_width * sizeof (ItemType), NULL, &ret);
+    if (m_gpuData == NULL) {
+        m_gpuData = new cl::Buffer(m_context, CL_MEM_READ_WRITE, m_height * m_width * sizeof (ItemType), NULL, &ret);
         if (ret != CL_SUCCESS) {
             throw(LinAlgo::gpu_exception(std::string("Unable to create memory buffer, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
         }
     }
 
-    if (!m_gpuHeight) {
-        m_gpuHeight = clCreateBuffer (m_context, CL_MEM_READ_ONLY, sizeof (ItemType), NULL, &ret);
+    if (m_gpuHeight == NULL) {
+        m_gpuHeight = new cl::Buffer(m_context, CL_MEM_READ_ONLY, sizeof (ItemType), NULL, &ret);
         if (ret != CL_SUCCESS) {
             throw(LinAlgo::gpu_exception(std::string("Unable to create memory buffer, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
         }
     }
 
-    if (!m_gpuWidth) {
-        m_gpuWidth = clCreateBuffer (m_context, CL_MEM_READ_ONLY, sizeof (ItemType), NULL, &ret);
+    if (m_gpuWidth == NULL) {
+        m_gpuWidth = new cl::Buffer(m_context, CL_MEM_READ_ONLY, sizeof (ItemType), NULL, &ret);
         if (ret != CL_SUCCESS) {
             throw(LinAlgo::gpu_exception(std::string("Unable to create memory buffer, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
         }
@@ -2018,7 +1913,7 @@ cl_int matrix<ItemType>::pushToGPU (cl_command_queue& command_queue) {
             size_t last;
             for (last = m_height - 1; m_gpuSlicesUpToDate[last] == true; last--);//find the last out of date slice
             if (!m_gpuSlicesUpToDate[i]) {//sets the last out of date slice as a blocking write
-                ret = clEnqueueWriteBuffer (command_queue, m_gpuData, (i == last ? CL_TRUE : CL_FALSE), i * m_width * sizeof (ItemType), m_width * sizeof (ItemType), m_data[i].data(), 0, NULL, NULL);
+                ret = m_command_queue.enqueueWriteBuffer (*m_gpuData, (i == last ? CL_TRUE : CL_FALSE), i * m_width * sizeof (ItemType), m_width * sizeof (ItemType), m_data[i].data());
                 if (ret != CL_SUCCESS) {
                     throw(LinAlgo::gpu_exception(std::string("Unable to push data to GPU, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
                 }
@@ -2030,7 +1925,7 @@ cl_int matrix<ItemType>::pushToGPU (cl_command_queue& command_queue) {
 
     //update height
     if (! (m_upToDate & dataFlag::GPU_HEIGHT)) {
-        ret = clEnqueueWriteBuffer (command_queue, m_gpuHeight, CL_TRUE, 0, sizeof (ItemType), &m_height, 0, NULL, NULL);
+        ret = m_command_queue.enqueueWriteBuffer (*m_gpuHeight, CL_TRUE, 0, sizeof (ItemType), &m_height);
         if (ret != CL_SUCCESS) {
             throw(LinAlgo::gpu_exception(std::string("Unable to push data to GPU, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
         }
@@ -2038,7 +1933,7 @@ cl_int matrix<ItemType>::pushToGPU (cl_command_queue& command_queue) {
     }
 
     if (! (m_upToDate & dataFlag::GPU_WIDTH)) {
-        ret = clEnqueueWriteBuffer (command_queue, m_gpuWidth, CL_TRUE, 0, sizeof (ItemType), &m_width, 0, NULL, NULL);
+        ret = m_command_queue.enqueueWriteBuffer (*m_gpuWidth, CL_TRUE, 0, sizeof (ItemType), &m_width);
         if (ret != CL_SUCCESS) {
             throw(LinAlgo::gpu_exception(std::string("Unable to push data to GPU, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
         }
@@ -2046,7 +1941,6 @@ cl_int matrix<ItemType>::pushToGPU (cl_command_queue& command_queue) {
     }
 
     m_gpuUpToDate = true;
-    //clFinish(command_queue);//make sure everything is written to gpu... if anything
     return ret;
 }
 
@@ -2056,7 +1950,7 @@ cl_int matrix<ItemType>::pushToGPU (cl_command_queue& command_queue) {
 * @param command_queue The command queue to use for reading the buffers
 */
 template <class ItemType>
-cl_int matrix<ItemType>::pullFromGPU (cl_command_queue& command_queue) {
+cl_int matrix<ItemType>::pullFromGPU ( ) {
     cl_int ret;
     if (!m_dataInitialized) {
         //created empty to increase speed when leaving data on gpu
@@ -2071,7 +1965,7 @@ cl_int matrix<ItemType>::pullFromGPU (cl_command_queue& command_queue) {
     }
 
     for (int i = 0; i < m_height; i++) {//the last read is enqueued as a blocking read
-        ret = clEnqueueReadBuffer (command_queue, m_gpuData, (i == (m_height - 1) ? CL_TRUE : CL_FALSE), i * m_width * sizeof (ItemType), m_width * sizeof (ItemType), m_data[i].data(), 0, NULL, NULL);
+        ret = m_command_queue.enqueueReadBuffer (*m_gpuData, (i == (m_height - 1) ? CL_TRUE : CL_FALSE), i * m_width * sizeof (ItemType), m_width * sizeof (ItemType), m_data[i].data());
         if (ret != CL_SUCCESS) {
             throw(LinAlgo::gpu_exception(std::string("Unable to retrieve data from GPU, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
         }
@@ -2080,7 +1974,6 @@ cl_int matrix<ItemType>::pullFromGPU (cl_command_queue& command_queue) {
     m_gpuUpToDate = true;
     m_upToDate |= dataFlag::GPU_DATA;
 
-    //clFinish(command_queue);//make sure everything gets read
     return ret;
 }
 //}
@@ -2096,50 +1989,41 @@ cl_int matrix<ItemType>::pullFromGPU (cl_command_queue& command_queue) {
 * @note Can be used for any kernel acting on two matrices w/ the same number of elements
 */
 template <class ItemType>
-cl_int matrix<ItemType>::execute_add_kernel (cl_kernel kernel, matrix<ItemType>& rhs, matrix<ItemType>& result) {
+cl_int matrix<ItemType>::execute_add_kernel (cl::Kernel kernel, matrix<ItemType>& rhs, matrix<ItemType>& result) {
     cl_int ret;
     //set kernel arguments
-    ret = clSetKernelArg (kernel, 0, sizeof (cl_mem), (void*)& m_gpuData);
+    ret = kernel.setArg(0, *m_gpuData);
     if (ret != CL_SUCCESS) {
         throw(LinAlgo::gpu_exception(std::string("Unable to set kernel argument, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
     }
-    ret = clSetKernelArg (kernel, 1, sizeof (cl_mem), (void*)& m_gpuWidth);
+    ret = kernel.setArg(1, *m_gpuWidth);
     if (ret != CL_SUCCESS) {
         throw(LinAlgo::gpu_exception(std::string("Unable to set kernel argument, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
     }
-    ret = clSetKernelArg (kernel, 2, sizeof (cl_mem), (void*)& rhs.m_gpuData);
+    ret = kernel.setArg(2, *rhs.m_gpuData);
     if (ret != CL_SUCCESS) {
         throw(LinAlgo::gpu_exception(std::string("Unable to set kernel argument, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
     }
-    ret = clSetKernelArg (kernel, 3, sizeof (cl_mem), (void*)& rhs.m_gpuWidth);
+    ret = kernel.setArg(3, *rhs.m_gpuWidth);
     if (ret != CL_SUCCESS) {
         throw(LinAlgo::gpu_exception(std::string("Unable to set kernel argument, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
     }
-    ret = clSetKernelArg (kernel, 4, sizeof (cl_mem), (void*)& result.m_gpuData);
+    ret = kernel.setArg(4, *result.m_gpuData);
     if (ret != CL_SUCCESS) {
         throw(LinAlgo::gpu_exception(std::string("Unable to set kernel argument, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
     }
-    ret = clSetKernelArg (kernel, 5, sizeof (cl_mem), (void*)& result.m_gpuWidth);
+    ret = kernel.setArg(5, *result.m_gpuWidth);
     if (ret != CL_SUCCESS) {
         throw(LinAlgo::gpu_exception(std::string("Unable to set kernel argument, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
     }
 
     //execute the kernel
-    size_t global_item_size = result.m_width * result.m_height;
-    //size_t local_item_size = 64;
-
-    //removed local work group size since using it properly requires a fair amount bothering to query the cpu
-    //and calculating divisibility of the broader work group space by the local. As well as determing if there
-    //should be work group dimensions and splitting amoung those. So, in lieu of not wanting to modify both this
-    //function and the gpu initialization function, imma leave it at NULL so that the gpu decides it on its own
-    //until i decide i have a better idea on how i can handle it myself (especially the dimesnsions)
-    //Oh, and changing it to null made it actually work on linux instead of throwing CL_INVALID_WORK_GROUP_SIZE
-    ret = clEnqueueNDRangeKernel (m_command_queue, kernel, 1, NULL, &global_item_size, /*&local_item_size*/ NULL, 0, NULL, NULL);
+    ret = m_command_queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(result.m_width * result.m_height), cl::NullRange);
     if (ret != CL_SUCCESS) {
         throw(LinAlgo::gpu_exception(std::string("Unable to execute kernel, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
     }
 
-    ret = clFinish(m_command_queue);
+    ret = m_command_queue.finish();
     return ret;
 }
 
@@ -2149,44 +2033,41 @@ cl_int matrix<ItemType>::execute_add_kernel (cl_kernel kernel, matrix<ItemType>&
 * @note This could just be the execute_add_kernel tbh
 */
 template <class ItemType>
-cl_int matrix<ItemType>::execute_multiply_kernel (cl_kernel kernel, matrix<ItemType>& rhs, matrix<ItemType>& result) {
+cl_int matrix<ItemType>::execute_multiply_kernel (cl::Kernel kernel, matrix<ItemType>& rhs, matrix<ItemType>& result) {
     cl_int ret;
     //set kernel arguments
-    ret = clSetKernelArg (kernel, 0, sizeof (cl_mem), (void*)& m_gpuData);
+    ret = kernel.setArg(0, *m_gpuData);
     if (ret != CL_SUCCESS) {
         throw(LinAlgo::gpu_exception(std::string("Unable to set kernel argument, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
     }
-    ret = clSetKernelArg (kernel, 1, sizeof (cl_mem), (void*)& m_gpuWidth); //single arg
+    ret = kernel.setArg(1, *m_gpuWidth);
     if (ret != CL_SUCCESS) {
         throw(LinAlgo::gpu_exception(std::string("Unable to set kernel argument, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
     }
-    ret = clSetKernelArg (kernel, 2, sizeof (cl_mem), (void*)& rhs.m_gpuData);
+    ret = kernel.setArg(2, *rhs.m_gpuData);
     if (ret != CL_SUCCESS) {
         throw(LinAlgo::gpu_exception(std::string("Unable to set kernel argument, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
     }
-    ret = clSetKernelArg (kernel, 3, sizeof (cl_mem), (void*)& rhs.m_gpuWidth); //single arg
+    ret = kernel.setArg(3, *rhs.m_gpuWidth);
     if (ret != CL_SUCCESS) {
         throw(LinAlgo::gpu_exception(std::string("Unable to set kernel argument, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
     }
-    ret = clSetKernelArg (kernel, 4, sizeof (cl_mem), (void*)& result.m_gpuData);
+    ret = kernel.setArg(4, *result.m_gpuData);
     if (ret != CL_SUCCESS) {
         throw(LinAlgo::gpu_exception(std::string("Unable to set kernel argument, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
     }
-    ret = clSetKernelArg (kernel, 5, sizeof (cl_mem), (void*)& result.m_gpuWidth); //single arg
+    ret = kernel.setArg(5, *result.m_gpuWidth);
     if (ret != CL_SUCCESS) {
         throw(LinAlgo::gpu_exception(std::string("Unable to set kernel argument, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
     }
 
     //execute the kernel
-    size_t global_item_size = result.m_width * result.m_height;
-    size_t local_item_size = 64;
-
-    ret = clEnqueueNDRangeKernel (m_command_queue, kernel, 1, NULL, &global_item_size, /*&local_item_size*/ NULL, 0, NULL, NULL);
+    ret = m_command_queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(result.m_width * result.m_height), cl::NullRange);
     if (ret != CL_SUCCESS) {
         throw(LinAlgo::gpu_exception(std::string("Unable to execute kernel, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
     }
 
-    ret = clFinish(m_command_queue);
+    ret = m_command_queue.finish();
     return ret;
 }
 
@@ -2194,45 +2075,41 @@ cl_int matrix<ItemType>::execute_multiply_kernel (cl_kernel kernel, matrix<ItemT
 * @brief function for executing the array and single value kernels
 */
 template <class ItemType>
-cl_int matrix<ItemType>::execute_array_val_kernel (cl_kernel kernel, ItemType& val, matrix<ItemType>& result) {
+cl_int matrix<ItemType>::execute_array_val_kernel (cl::Kernel kernel, ItemType& val, matrix<ItemType>& result) {
     cl_int ret;
 
     //push val to gpu
-    cl_mem value = clCreateBuffer (m_context, CL_MEM_READ_ONLY, sizeof (ItemType), NULL, &ret);
+    cl::Buffer value(m_context, CL_MEM_READ_ONLY, sizeof (ItemType), NULL, &ret);
     if (ret != CL_SUCCESS) {
         throw(LinAlgo::gpu_exception(std::string("Unable to create memory buffer, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
     }
 
-    ret = clEnqueueWriteBuffer (m_command_queue, value, CL_TRUE, 0, sizeof (ItemType), &val, 0, NULL, NULL);
+    ret = m_command_queue.enqueueWriteBuffer(value, CL_TRUE, 0, sizeof (ItemType), &val);
     if (ret != CL_SUCCESS) {
         throw(LinAlgo::gpu_exception(std::string("Unable to push data to GPU, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
     }
 
     //set kernel arguments
-    ret = clSetKernelArg (kernel, 0, sizeof (cl_mem), (void*)& m_gpuData);
+    ret = kernel.setArg(0, *m_gpuData);
     if (ret != CL_SUCCESS) {
         throw(LinAlgo::gpu_exception(std::string("Unable to set kernel argument, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
     }
-    ret = clSetKernelArg (kernel, 1, sizeof (cl_mem), (void*)& result.m_gpuData);
+    ret = kernel.setArg(1, *result.m_gpuData);
     if (ret != CL_SUCCESS) {
         throw(LinAlgo::gpu_exception(std::string("Unable to set kernel argument, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
     }
-    ret = clSetKernelArg (kernel, 2, sizeof (cl_mem), (void*)& value); //single arg
+    ret = kernel.setArg(2, value);
     if (ret != CL_SUCCESS) {
         throw(LinAlgo::gpu_exception(std::string("Unable to set kernel argument, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
     }
 
     //execute the kernel
-    size_t global_item_size = result.m_width * result.m_height;
-
-    ret = clEnqueueNDRangeKernel (m_command_queue, kernel, 1, NULL, &global_item_size, NULL, 0, NULL, NULL);
+    ret = m_command_queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(result.m_width * result.m_height), cl::NullRange);
     if (ret != CL_SUCCESS) {
         throw(LinAlgo::gpu_exception(std::string("Unable to execute kernel, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
     }
 
-    ret = clFinish (m_command_queue);
-    clReleaseMemObject (value);
-
+    ret = m_command_queue.finish();
     return ret;
 }
 //}

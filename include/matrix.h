@@ -386,21 +386,19 @@ private:
     bool m_leaveOnGPU;//do not pull data from gpu, speeds up performance for chained operations
 
     //aux functions for the gpu usage
-    cl_int initQueue();//returns CL_SUCCESS is successful
-    cl_int createResultBuffer (cl_command_queue&); //returns CL_SUCCESS if successful
-    cl_int pushToGPU (cl_command_queue&); //returns CL_SUCCESS if successful
-    cl_int pullFromGPU (cl_command_queue&); //returns CL_SUCCESS if successful
+    cl_int createResultBuffer ( ); //returns CL_SUCCESS if successful
+    cl_int pushToGPU ( ); //returns CL_SUCCESS if successful
+    cl_int pullFromGPU ( ); //returns CL_SUCCESS if successful
 
     //data involved in the gpu computation
-    cl_mem m_gpuData;
-    cl_mem m_gpuHeight;
-    cl_mem m_gpuWidth;
-    //cl_command_queue m_command_queue;
+    cl::Buffer* m_gpuData;
+    cl::Buffer* m_gpuHeight;
+    cl::Buffer* m_gpuWidth;
 
     //functions to execute the kernels
-    cl_int execute_add_kernel (cl_kernel kernel, matrix<ItemType>& rhs, matrix<ItemType>& result); //so far these two functions are basically exactly the same...
-    cl_int execute_multiply_kernel (cl_kernel kernel, matrix<ItemType>& rhs, matrix<ItemType>& result); //they'll change if the kernel params do, but rn....
-    cl_int execute_array_val_kernel (cl_kernel kernel, ItemType& val, matrix<ItemType>& result);
+    cl_int execute_add_kernel (cl::Kernel kernel, matrix<ItemType>& rhs, matrix<ItemType>& result); //so far these two functions are basically exactly the same...
+    cl_int execute_multiply_kernel (cl::Kernel kernel, matrix<ItemType>& rhs, matrix<ItemType>& result); //they'll change if the kernel params do, but rn....
+    cl_int execute_array_val_kernel (cl::Kernel kernel, ItemType& val, matrix<ItemType>& result);
 #endif
 };
 
