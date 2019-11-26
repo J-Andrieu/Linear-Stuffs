@@ -107,6 +107,41 @@ int main (int argc, char* argv[]) {
             CheckAccuracy(HEIGHT, WIDTH, params.log_file, params.verbose);
         }
 
+        LinAlgo::matrix<int> M1(10, 10);
+        LinAlgo::matrix<int> M2 = LinAlgo::identityMatrix(M1.getWidth());
+
+        for (auto iter = M1.begin(); iter < M1.end(); iter++) {
+            *iter = rand();
+        }
+        LinAlgo::matrix<int> M3(M1);
+
+        printf("The non-gpu matrix before multiplication: \n");
+        print_matrix(M1);
+        printf("\nThe gpu matrix before multiplication: \n");
+        print_matrix(M3);
+        printf("\n");
+
+        for (int i = 0; i < 60; i++) {
+            M1 = M1 * M2;
+        }
+
+        M3.useGPU(true);
+        M3.leaveDataOnGPU(true);
+        M2.useGPU(true);
+        M2.leaveDataOnGPU(true);
+        M3.pushData();
+        M2.pushData();
+        for (int i = 0; i < 60; i++) {
+            M3 = M3 * M2;
+        }
+        M3.pullData();
+
+        printf("The non-gpu matrix after multiplication: \n");
+        print_matrix(M1);
+        printf("\nThe gpu matrix after multiplication: \n");
+        print_matrix(M3);
+        printf("\nThe chained multiplication is %saccurate\n", (M3 == M1 ? "" : "not "));
+
 /*
         printf("Attempting QR Algorithm for finding eigenvalues of a matrix\n");
         printf("The matrix is: \n");

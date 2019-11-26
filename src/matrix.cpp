@@ -352,7 +352,7 @@ bool matrix<ItemType>::useGPU (bool use_it) {
         if (!m_useGPU && m_leaveOnGPU) {
             pullFromGPU( );
             m_leaveOnGPU = false;
-        } 
+        }
         return true;
     }
     return false;
@@ -635,7 +635,7 @@ matrix<ItemType>::iterator<const ItemType> matrix<ItemType>::cbegin() const {
 */
 template <class ItemType>
 matrix<ItemType>::iterator<const ItemType> matrix<ItemType>::cend() const {
-    return iterator<const ItemType>(m_width * m_height - 1, 0, m_width * m_height, m_width, &m_data);
+    return iterator<const ItemType>(m_width * m_height, 0, m_width * m_height - 1, m_width, &m_data);
 }
 
 /**
@@ -651,7 +651,7 @@ matrix<ItemType>::iterator<ItemType> matrix<ItemType>::begin() {
 */
 template <class ItemType>
 matrix<ItemType>::iterator<ItemType> matrix<ItemType>::end() {
-    return iterator<ItemType>(m_width * m_height - 1, 0, m_width * m_height, m_width, &m_data);
+    return iterator<ItemType>(m_width * m_height, 0, m_width * m_height - 1, m_width, &m_data);
 }
 
 #ifndef DONT_USE_GPU
@@ -913,7 +913,7 @@ matrix<ItemType> matrix<ItemType>::subtract (matrix<ArgType>& M) {
             throw(LinAlgo::gpu_exception("GPU is not initialized", __FILE__, __LINE__, -99));
         }
         pushToGPU ( );
-        M.pushToGPU ( ); 
+        M.pushToGPU ( );
         result.createResultBuffer ( );
         if (std::is_same<ItemType, ArgType>::value) {
             cl_int ret; //i'm not even kinda checking this rn, but maybe i will later :P
@@ -1836,7 +1836,7 @@ cl_int matrix<ItemType>::createResultBuffer () {
     if (m_gpuWidth != NULL) {
         delete m_gpuWidth;
     }
-    
+
     m_gpuData = new cl::Buffer(m_context, CL_MEM_READ_WRITE, m_height * m_width * sizeof (ItemType), NULL, &ret);
     if (ret != CL_SUCCESS) {
         throw(LinAlgo::gpu_exception(std::string("Unable to create memory buffer, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
