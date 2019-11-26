@@ -1671,9 +1671,6 @@ matrix<ItemType>& matrix<ItemType>::operator= (matrix<ItemType>&& M) {
     m_data = std::move(M.m_data);
 #ifndef DONT_USE_GPU
     cl_int ret = m_command_queue.finish();
-    if (ret != CL_SUCCESS) {
-        printf("oh shit, ohfuck, something's gone horribly wrong\n");
-    }
     if (m_gpuData) {
         delete m_gpuData;
     }
@@ -1825,10 +1822,7 @@ template <class ItemType>
 cl_int matrix<ItemType>::createResultBuffer () {
     cl_int ret = m_command_queue.flush();
     if (ret != CL_SUCCESS) {
-        m_command_queue = cl::CommandQueue(m_context, m_default_device, 0, &ret);
-        if (ret != CL_SUCCESS) {
-            throw(LinAlgo::gpu_exception(std::string("Unable to create command queue, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
-        }
+        throw(LinAlgo::gpu_exception(std::string("Command queue died, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
     }
     if (m_gpuData != NULL) {
         delete m_gpuData;
@@ -1878,10 +1872,7 @@ template <class ItemType>
 cl_int matrix<ItemType>::pushToGPU () {
     cl_int ret = m_command_queue.flush();
     if (ret != CL_SUCCESS) {
-        m_command_queue = cl::CommandQueue(m_context, m_default_device, 0, &ret);
-        if (ret != CL_SUCCESS) {
-            throw(LinAlgo::gpu_exception(std::string("Unable to create command queue, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
-        }
+        throw(LinAlgo::gpu_exception(std::string("Command queue died, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
     }
     if (m_gpuUpToDate && !m_leaveOnGPU) {
         return CL_SUCCESS;
@@ -1896,7 +1887,7 @@ cl_int matrix<ItemType>::pushToGPU () {
         }
     }
 
-    if (m_leaveOnGPU) {
+    if (m_leaveOnGPU && m_dataInitialized && !m_gpuUpToDate) {
         createResultBuffer();
     }
 
@@ -1968,10 +1959,7 @@ template <class ItemType>
 cl_int matrix<ItemType>::pullFromGPU ( ) {
     cl_int ret = m_command_queue.flush();
     if (ret != CL_SUCCESS) {
-        m_command_queue = cl::CommandQueue(m_context, m_default_device, 0, &ret);
-        if (ret != CL_SUCCESS) {
-            throw(LinAlgo::gpu_exception(std::string("Unable to create command queue, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
-        }
+        throw(LinAlgo::gpu_exception(std::string("Command queue died, error code: ") + std::string(LinAlgo::getErrorString(ret)), __FILE__, __LINE__, ret));
     }
     if (!m_dataInitialized) {
         //created empty to increase speed when leaving data on gpu

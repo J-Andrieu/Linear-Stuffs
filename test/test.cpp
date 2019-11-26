@@ -133,7 +133,7 @@ int main (int argc, char* argv[]) {
         M2.leaveDataOnGPU(true);
         M3.pushData();
         M2.pushData();
-        for (int i = 0; i < 60; i++) {
+        for (int i = 0; i < 1; i++) {
             M3 = M3 * M2;
         }
         M3.pullData();
