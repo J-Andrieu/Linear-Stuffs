@@ -178,7 +178,7 @@ int main (int argc, char* argv[]) {
         Timers::setLogFile(params.log_file);
         Timers::logNamedTimers();
     }
-    
+
     LinAlgo::BreakDownGPU();
 
     return 0;
@@ -213,7 +213,7 @@ void CheckSpeed(std::string logfile, bool verbose) {
         }
     }
 
-    log << "Testing chained multiplications..." << std::endl;
+    log << "Testing chained multiplications" << std::endl;
     if (verbose) {
         std::cout << "Testing chained multiplications..." << std::endl;
     }
@@ -249,7 +249,7 @@ void CheckSpeed(std::string logfile, bool verbose) {
     log << "Finished GPU chained multiplication with data pull after " << chained_t1 << " milliseconds" << std::endl;
     chain_tests.start();
     {
-        Timer t("Chained GPU multiplications (leave data on GPU");
+        Timer t("Chained GPU multiplications (leave data on GPU)");
         //it looks like clCreateCommandQueue has a memory leak on amd drivers, and /that's/ why this crashes... not sure tho.
         for (int i = 0; i < 60; i++) {
             M3 = std::move(M3 * M3);

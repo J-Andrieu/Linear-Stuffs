@@ -17,14 +17,14 @@
 #include <thread>
 
 #ifndef DONT_USE_GPU
-#define CL_USE_DEPRECATED_OPENCL_1_2_APIS //just in case somone has OpenCL 1.2
+//#define CL_USE_DEPRECATED_OPENCL_1_2_APIS //just in case somone has OpenCL 1.2
 //#define CL_HPP_ENABLE_EXCEPTIONS
-#define CL_HPP_TARGET_OPENCL_VERSION 200
-#define CL_HPP_MINIMUM_OPENCL_VERSION 120
+//#define CL_HPP_TARGET_OPENCL_VERSION 200
+//#define CL_HPP_MINIMUM_OPENCL_VERSION 120
 #ifdef _WIN32
-#include <CL\cl2.hpp>
+#include <CL\cl.hpp>
 #else
-#include <CL/cl2.hpp>
+#include <CL/cl.hpp>
 #endif
 #endif
 
@@ -198,7 +198,7 @@ namespace LinAlgo {
                 kernel_src += '\n';
             }
             file.close();
-            
+
             //cretea Sources obect
             cl::Program::Sources sources;
             sources.push_back({kernel_src.c_str(), kernel_src.length()});
@@ -434,16 +434,20 @@ static cl_int LinAlgo::InitGPU() {
     m_kernels[KernelType::LONG] = m_longKernels;
     m_kernels[KernelType::FLOAT] = m_floatKernels;
     m_kernels[KernelType::DOUBLE] = m_doubleKernels;
-    
+
     cl_int ret;
-    
-    //get the platforms 
+
+    //get the platforms
     ret = cl::Platform::get(&m_platforms);
     if (ret != CL_SUCCESS) {
         throw(gpu_exception(std::string("Unable to load platform IDs") + LinAlgo::getErrorString(ret), __FILE__, __LINE__, ret));
     }
     m_default_platform = m_platforms[0];
-    
+
+    std::string version;
+    m_default_platform.getInfo(CL_PLATFORM_VERSION, &version);
+    printf("Using OpenCL version: %s\n", version.c_str());
+
     //get the devices
     m_default_platform.getDevices(CL_DEVICE_TYPE_GPU, &m_devices);
     if (m_devices.size() == 0) {
