@@ -1670,7 +1670,10 @@ matrix<ItemType>& matrix<ItemType>::operator= (matrix<ItemType>&& M) {
     m_width = M.m_width;
     m_data = std::move(M.m_data);
 #ifndef DONT_USE_GPU
-    m_command_queue.finish();
+    cl_int ret = m_command_queue.finish();
+    if (ret != CL_SUCCESS) {
+        printf("oh shit, ohfuck, something's gone horribly wrong\n");
+    }
     if (m_gpuData) {
         delete m_gpuData;
     }

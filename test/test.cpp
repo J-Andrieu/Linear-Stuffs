@@ -124,6 +124,8 @@ int main (int argc, char* argv[]) {
         for (int i = 0; i < 60; i++) {
             M1 = M1 * M2;
         }
+        printf("The non-gpu matrix after multiplication: \n");
+        print_matrix(M1);
 
         M3.useGPU(true);
         M3.leaveDataOnGPU(true);
@@ -136,8 +138,6 @@ int main (int argc, char* argv[]) {
         }
         M3.pullData();
 
-        printf("The non-gpu matrix after multiplication: \n");
-        print_matrix(M1);
         printf("\nThe gpu matrix after multiplication: \n");
         print_matrix(M3);
         printf("\nThe chained multiplication is %saccurate\n", (M3 == M1 ? "" : "not "));
