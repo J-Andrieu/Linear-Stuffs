@@ -446,7 +446,7 @@ static cl_int LinAlgo::InitGPU() {
 
     std::string version;
     m_default_platform.getInfo(CL_PLATFORM_VERSION, &version);
-    printf("Using OpenCL version: %s\n", version.c_str());
+    //printf("Using OpenCL version: %s\n", version.c_str());
 
     //get the devices
     m_default_platform.getDevices(CL_DEVICE_TYPE_GPU, &m_devices);
