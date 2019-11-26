@@ -68,9 +68,12 @@ namespace LinAlgo {
 //due to updating gpu data counting as cahnging the matrix, I can't
 //actually have these be const :'(
     template <class ItemType>
-    matrix<ItemType> map (const matrix<ItemType>& M, std::string kernel, cl_int& error_ret);
+    matrix<ItemType> map (const matrix<ItemType>& M, std::string kernel, cl_int* error_ret = NULL);
     template <class ItemType>
-    matrix<ItemType> map (const matrix<ItemType>& M, cl_kernel kernel, cl_int& error_ret);
+    matrix<ItemType> map (const matrix<ItemType>& M, cl::Kernel kernel, cl_int* error_ret = NULL);
+
+    cl::Kernel createKernel(std::string kernel, cl_int* error_ret = NULL);
+    //I should add a convolution kernel, huh?
 #endif
 
 
@@ -113,7 +116,7 @@ namespace LinAlgo {
 
 #ifndef DONT_USE_GPU
 //functions and such for dealing with the gpu
-    static cl_int InitGPU();
+    static cl_int InitGPU(std::vector<std::string> typesToInitialize = {"all"});
     static bool BreakDownGPU();
     static bool AllUseGPU (bool use_it);
     static bool IsGPUInitialized();
@@ -418,7 +421,7 @@ const char* LinAlgo::getErrorString (cl_int error) {
 *
 * @return cl_int This function returns CL_SUCCESS if the initialization is successful, otherwise it returns an error code.
 */
-static cl_int LinAlgo::InitGPU() {
+static cl_int LinAlgo::InitGPU(std::vector<std::string> typesToInitialize) {
 
     if (GPU_INITIALIZED)
     { return CL_SUCCESS; }
@@ -436,6 +439,9 @@ static cl_int LinAlgo::InitGPU() {
     m_kernels[KernelType::LONG] = m_longKernels;
     m_kernels[KernelType::FLOAT] = m_floatKernels;
     m_kernels[KernelType::DOUBLE] = m_doubleKernels;
+    if (typesToInitialize[0] == "all") {
+        typesToInitialize = m_
+    }
 
     cl_int ret;
 
@@ -1022,6 +1028,20 @@ LinAlgo::matrix<ItemType> LinAlgo::gj (const LinAlgo::matrix<ItemType>& M) {
     }
 
     return result;
+}
+
+/**
+* @brief Generates a kernel from source code for use with the mapping functions
+*
+* @note the function signature that will be built and called is
+* __kernel void main(), be sure to use appropriate types for pointers.
+* If this is an overwrite kernel then __gloabal <type>* data, otherwise
+* __global const <type>* in, __global <type>* out
+*/
+cl::Kernel LinAlgo::createKernel(std::string kernel, cl_int* error_ret) {
+    cl::Program temp_prog = cl::Program(m_contex, {kernel.c_str(), kernel.length()});
+    temp_prog.build({m_default_device});
+    return cl::Kernel(temp_prog, "main", error_ret);
 }
 
 #pragma region Vector Functions
