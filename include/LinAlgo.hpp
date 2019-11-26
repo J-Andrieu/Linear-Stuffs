@@ -119,9 +119,9 @@ namespace LinAlgo {
     static bool IsGPUInitialized();
 
 //these will allow users to generate kernels
-    static const cl_platform_id retrievePlatformID();
-    static const cl_device_id retrieveDeviceID();
-    static const cl_context retrieveContext();
+    static const cl::Platform retrievePlatformID();
+    static const cl::Device retrieveDeviceID();
+    static const cl::Context retrieveContext();
 
 #include <exception>
     class gpu_exception : public std::exception {
@@ -212,7 +212,7 @@ namespace LinAlgo {
 //private variables
         bool GPU_INITIALIZED = false;
         bool ALL_USE_GPU = false;
-        float OPENCL_VERSION = 0.0f;
+        //float OPENCL_VERSION = 0.0f;
 
         typedef enum {
             ADD,
@@ -226,6 +226,9 @@ namespace LinAlgo {
             DIVIDE_ELEMENT,
             NUM_KERNELS
         } Kernel;
+        std::vector<std::string> kernelNames ({ "add", "addScalar", "subtract", "subtractScalar", 
+                                                "multiply", "multiplyScalar", "elementMultiply", 
+                                                "divideScalar", "elementDivide" });
 
         typedef enum {
             CHAR,
@@ -236,14 +239,15 @@ namespace LinAlgo {
             DOUBLE,
             NUM_TYPES
         } KernelType;
+        std::vector<std::string> typeStrings ({ "char", "short", "int", "long", "float", "double" });
 
-        cl::Kernel* m_charKernels;
-        cl::Kernel* m_shortKernels;
-        cl::Kernel* m_intKernels;
-        cl::Kernel* m_longKernels;
-        cl::Kernel* m_floatKernels;
-        cl::Kernel* m_doubleKernels;
-        cl::Kernel** m_kernels;
+        cl::Kernel*  m_charKernels = NULL;
+        cl::Kernel*  m_shortKernels = NULL;
+        cl::Kernel*  m_intKernels = NULL;
+        cl::Kernel*  m_longKernels = NULL;
+        cl::Kernel*  m_floatKernels = NULL;
+        cl::Kernel*  m_doubleKernels = NULL;
+        cl::Kernel** m_kernels = NULL;
 
         std::vector<cl::Platform> m_platforms;
         cl::Platform m_default_platform;
@@ -478,12 +482,11 @@ static cl_int LinAlgo::InitGPU() {
     std::string kernel_directory = "../kernels/";
     #endif
     std::vector<cl::Program> programs(KernelType::NUM_TYPES);
-    std::vector<std::string> type_str ({ "char", "short", "int", "long", "float", "double" });
     for (size_t type = 0; type < KernelType::NUM_TYPES; type++) {
         //printf("The kernel file name is: %s\n", std::string(kernel_directory + std::string("matrix_kernels_") + type_str[type] + std::string(".cl")).c_str());
         programs[type] = create_program (kernel_directory +
                                          std::string ("matrix_kernels_") +
-                                         type_str[type] +
+                                         typeStrings[type] +
                                          std::string (".cl"),
                                          &m_context,
                                          &ret);
@@ -496,7 +499,7 @@ static cl_int LinAlgo::InitGPU() {
     for (size_t type = 0; type < KernelType::NUM_TYPES; type++) {
         ret = programs[type].build({m_default_device});
         if (ret != CL_SUCCESS) {
-            gpu_exception ouch(std::string("program ") + type_str[type] + std::string(" build unsuccessful"), __FILE__, __LINE__, ret);
+            gpu_exception ouch(std::string("program ") + typeStrings[type] + std::string(" build unsuccessful"), __FILE__, __LINE__, ret);
             if (ret == CL_BUILD_PROGRAM_FAILURE) {
                 ouch.setLog(programs[type].getBuildInfo<CL_PROGRAM_BUILD_LOG>(m_default_device));
             }
@@ -505,13 +508,12 @@ static cl_int LinAlgo::InitGPU() {
     }
 
     //and finally, create the kernels
-    std::vector<std::string> kernelNames ({ "add", "addScalar", "subtract", "subtractScalar", "multiply", "multiplyScalar", "elementMultiply", "divideScalar", "elementDivide" });
     for (size_t type = 0; type < KernelType::NUM_TYPES; type++) {
         //printf("Generating kernels for type: %s\n", type_str[type].c_str());
         for (size_t kernel = 0; kernel < Kernel::NUM_KERNELS; kernel++) {
             m_kernels[type][kernel] = cl::Kernel(programs[type], kernelNames[kernel].c_str(), &ret);
             if (ret != CL_SUCCESS) {
-                throw(gpu_exception(std::string("Could not create kernel. Kernel name: ") + kernelNames[kernel] + std::string(", type: ") + type_str[type].c_str(), __FILE__, __LINE__, ret));
+                throw(gpu_exception(std::string("Could not create kernel. Kernel name: ") + kernelNames[kernel] + std::string(", type: ") + typeStrings[type].c_str(), __FILE__, __LINE__, ret));
             }
         }
     }
