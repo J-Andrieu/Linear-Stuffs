@@ -229,8 +229,8 @@ namespace LinAlgo {
             DIVIDE_ELEMENT,
             NUM_KERNELS
         } Kernel;
-        std::vector<std::string> kernelNames ({ "add", "addScalar", "subtract", "subtractScalar", 
-                                                "multiply", "multiplyScalar", "elementMultiply", 
+        std::vector<std::string> kernelNames ({ "add", "addScalar", "subtract", "subtractScalar",
+                                                "multiply", "multiplyScalar", "elementMultiply",
                                                 "divideScalar", "elementDivide" });
 
         typedef enum {
@@ -243,6 +243,7 @@ namespace LinAlgo {
             NUM_TYPES
         } KernelType;
         std::vector<std::string> typeStrings ({ "char", "short", "int", "long", "float", "double" });
+        std::vector<std::string> intitializedTypes;
 
         cl::Kernel*  m_charKernels = NULL;
         cl::Kernel*  m_shortKernels = NULL;
@@ -444,8 +445,9 @@ static cl_int LinAlgo::InitGPU(std::vector<std::string> typesToInitialize) {
     m_kernels[KernelType::FLOAT] = m_floatKernels;
     m_kernels[KernelType::DOUBLE] = m_doubleKernels;
     if (typesToInitialize[0] == "all") {
-        typesToInitialize = m_
+        typesToInitialize = typeStrings;
     }
+    initializedTypes.reserve(typesToInitialize.size());
 
     cl_int ret;
 
@@ -481,7 +483,6 @@ static cl_int LinAlgo::InitGPU(std::vector<std::string> typesToInitialize) {
     Once kernels are completed the template will be stored as part of the source code to remove the need to track files
     */
     //create kernels
-    //first get the programs set up
     #ifdef MATRIX_KERNEL_DIR
     std::string kernel_directory = MATRIX_KERNEL_DIR ;
     #else
@@ -490,36 +491,34 @@ static cl_int LinAlgo::InitGPU(std::vector<std::string> typesToInitialize) {
     std::vector<cl::Program> programs(KernelType::NUM_TYPES);
     for (size_t type = 0; type < KernelType::NUM_TYPES; type++) {
         //printf("The kernel file name is: %s\n", std::string(kernel_directory + std::string("matrix_kernels_") + type_str[type] + std::string(".cl")).c_str());
-        programs[type] = create_program (kernel_directory +
-                                         std::string ("matrix_kernels_") +
-                                         typeStrings[type] +
-                                         std::string (".cl"),
-                                         &m_context,
-                                         &ret);
-        if (ret != CL_SUCCESS) {
-            throw(gpu_exception("Unable to create program", __FILE__, __LINE__, ret));
-        }
-    }
-
-    //now build the programs
-    for (size_t type = 0; type < KernelType::NUM_TYPES; type++) {
-        ret = programs[type].build({m_default_device});
-        if (ret != CL_SUCCESS) {
-            gpu_exception ouch(std::string("program ") + typeStrings[type] + std::string(" build unsuccessful"), __FILE__, __LINE__, ret);
-            if (ret == CL_BUILD_PROGRAM_FAILURE) {
-                ouch.setLog(programs[type].getBuildInfo<CL_PROGRAM_BUILD_LOG>(m_default_device));
-            }
-            throw(ouch);
-        }
-    }
-
-    //and finally, create the kernels
-    for (size_t type = 0; type < KernelType::NUM_TYPES; type++) {
-        //printf("Generating kernels for type: %s\n", type_str[type].c_str());
-        for (size_t kernel = 0; kernel < Kernel::NUM_KERNELS; kernel++) {
-            m_kernels[type][kernel] = cl::Kernel(programs[type], kernelNames[kernel].c_str(), &ret);
+        if (std::find(typesToInitialize.begin(), typesToInitialize.end(), typeStrings[type]) != typesToInitialize.end()) {
+            //create the programs
+            programs[type] = create_program (kernel_directory +
+                                             std::string ("matrix_kernels_") +
+                                             typeStrings[type] +
+                                             std::string (".cl"),
+                                             &m_context,
+                                             &ret);
             if (ret != CL_SUCCESS) {
-                throw(gpu_exception(std::string("Could not create kernel. Kernel name: ") + kernelNames[kernel] + std::string(", type: ") + typeStrings[type].c_str(), __FILE__, __LINE__, ret));
+                throw(gpu_exception("Unable to create program", __FILE__, __LINE__, ret));
+            }
+
+            //build the programs
+            ret = programs[type].build({m_default_device});
+            if (ret != CL_SUCCESS) {
+                gpu_exception ouch(std::string("program ") + typeStrings[type] + std::string(" build unsuccessful"), __FILE__, __LINE__, ret);
+                if (ret == CL_BUILD_PROGRAM_FAILURE) {
+                    ouch.setLog(programs[type].getBuildInfo<CL_PROGRAM_BUILD_LOG>(m_default_device));
+                }
+                throw(ouch);
+            }
+
+            //create the kernels
+            for (size_t kernel = 0; kernel < Kernel::NUM_KERNELS; kernel++) {
+                m_kernels[type][kernel] = cl::Kernel(programs[type], kernelNames[kernel].c_str(), &ret);
+                if (ret != CL_SUCCESS) {
+                    throw(gpu_exception(std::string("Could not create kernel. Kernel name: ") + kernelNames[kernel] + std::string(", type: ") + typeStrings[type].c_str(), __FILE__, __LINE__, ret));
+                }
             }
         }
     }
