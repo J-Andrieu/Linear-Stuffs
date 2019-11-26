@@ -248,10 +248,13 @@ void CheckSpeed(std::string logfile, bool verbose) {
         }
     }
 
+    LinAlgo::BreakDownGPU();
+    LinAlgo::InitGPU();
     log << "Testing chained multiplications" << std::endl;
     if (verbose) {
         std::cout << "Testing chained multiplications..." << std::endl;
     }
+    LinAlgo::matrix<int> ID = LinAlgo::identityMatrix(500);
     LinAlgo::matrix<int> M1(500, 500, 1);
     LinAlgo::matrix<int> M2(500, 500, 1);
     M2.useGPU(true);
@@ -263,18 +266,19 @@ void CheckSpeed(std::string logfile, bool verbose) {
     {
         Timer t("Chained CPU multiplications");
         for (int i = 0; i < 60; i++) {
-            M1 = std::move(M1 * M1);
+            M1 = M1 * ID;
         }
     }
     if (verbose) {
         printf("Finished CPU only chained multiplication after %d milliseconds\n", (int) chain_tests.getMicrosecondsElapsed() / 1000);
     }
     log << "Finished CPU only chained multiplication after " << chain_tests.getMicrosecondsElapsed() / 1000 << " milliseconds" << std::endl;
+    ID.useGPU(true);
     chain_tests.start();
     {
         Timer t("Chained GPU multiplications (data pull each round)");
         for (int i = 0; i < 60; i++) {
-            M2 = std::move(M2 * M2);
+            M2 = M2 * ID;
         }
     }
     int chained_t1 = (int) chain_tests.getMicrosecondsElapsed() / 1000;
@@ -282,12 +286,13 @@ void CheckSpeed(std::string logfile, bool verbose) {
         printf("Finished GPU chained multiplication with data pull after %d milliseconds\n", chained_t1);
     }
     log << "Finished GPU chained multiplication with data pull after " << chained_t1 << " milliseconds" << std::endl;
+    ID.leaveDataOnGPU(true);
     chain_tests.start();
     {
         Timer t("Chained GPU multiplications (leave data on GPU)");
         //it looks like clCreateCommandQueue has a memory leak on amd drivers, and /that's/ why this crashes... not sure tho.
         for (int i = 0; i < 60; i++) {
-            M3 = std::move(M3 * M3);
+            M3 = M3 * ID;
         }
         M3.pullData();
     }
@@ -323,7 +328,7 @@ size_t testGPUvsCPUSpeed(std::ofstream& log, bool verbose, std::string test) {
         gpuMatrix.useGPU(true);
         cpuMatrix = LinAlgo::matrix<double>(dim, dim);
         LinAlgo::matrix<double> junkResult(0, 0);
-        for (auto i = gpuMatrix.begin(), j = cpuMatrix.begin(); i <= gpuMatrix.end(); i++, j++) {
+        for (auto i = gpuMatrix.begin(), j = cpuMatrix.begin(); i < gpuMatrix.end(); i++, j++) {
             *i = static_cast<double>(rand());
             *j = static_cast<double>(rand());
         }
@@ -484,7 +489,7 @@ test_out testGPUMatrixArithmetic(size_t height, size_t width, bool verbose, std:
         Timer t_char(std::string("Accuracy: GPU matrix ") + test + std::string(": character"));
         LinAlgo::matrix<char> m1(height, width);
         LinAlgo::matrix<char> m2(height, width);
-        for (auto i = m1.begin(), j = m2.begin(); i <= m1.end(); i++, j++) {
+        for (auto i = m1.begin(), j = m2.begin(); i < m1.end(); i++, j++) {
             *i = rand() % CHAR_MAX;
             *j = rand() % CHAR_MAX;
         }
@@ -524,7 +529,7 @@ test_out testGPUMatrixArithmetic(size_t height, size_t width, bool verbose, std:
         Timer t_char(std::string("Accuracy: GPU matrix ") + test + std::string(": short"));
         LinAlgo::matrix<short> m1(height, width);
         LinAlgo::matrix<short> m2(height, width);
-        for (auto i = m1.begin(), j = m2.begin(); i <= m1.end(); i++, j++) {
+        for (auto i = m1.begin(), j = m2.begin(); i < m1.end(); i++, j++) {
             *i = rand() % SHRT_MAX;
             *j = rand() % SHRT_MAX;
         }
@@ -564,7 +569,7 @@ test_out testGPUMatrixArithmetic(size_t height, size_t width, bool verbose, std:
         Timer t_char(std::string("Accuracy: GPU matrix ") + test + std::string(": integer"));
         LinAlgo::matrix<int> m1(height, width);
         LinAlgo::matrix<int> m2(height, width);
-        for (auto i = m1.begin(), j = m2.begin(); i <= m1.end(); i++, j++) {
+        for (auto i = m1.begin(), j = m2.begin(); i < m1.end(); i++, j++) {
             *i = rand() % INT_MAX;
             *j = rand() % INT_MAX;
         }
@@ -604,7 +609,7 @@ test_out testGPUMatrixArithmetic(size_t height, size_t width, bool verbose, std:
         Timer t_char(std::string("Accuracy: GPU matrix ") + test + std::string(": long"));
         LinAlgo::matrix<long> m1(height, width);
         LinAlgo::matrix<long> m2(height, width);
-        for (auto i = m1.begin(), j = m2.begin(); i <= m1.end(); i++, j++) {
+        for (auto i = m1.begin(), j = m2.begin(); i < m1.end(); i++, j++) {
             *i = rand() % LONG_MAX;
             *j = rand() % LONG_MAX;
         }
@@ -644,7 +649,7 @@ test_out testGPUMatrixArithmetic(size_t height, size_t width, bool verbose, std:
         Timer t_char(std::string("Accuracy: GPU matrix ") + test + std::string(": float"));
         LinAlgo::matrix<float> m1(height, width);
         LinAlgo::matrix<float> m2(height, width);
-        for (auto i = m1.begin(), j = m2.begin(); i <= m1.end(); i++, j++) {
+        for (auto i = m1.begin(), j = m2.begin(); i < m1.end(); i++, j++) {
             *i = static_cast<float>(rand());
             *j = static_cast<float>(rand());
         }
@@ -684,7 +689,7 @@ test_out testGPUMatrixArithmetic(size_t height, size_t width, bool verbose, std:
         Timer t_char(std::string("Accuracy: GPU matrix ") + test + std::string(": double"));
         LinAlgo::matrix<double> m1(height, width);
         LinAlgo::matrix<double> m2(height, width);
-        for (auto i = m1.begin(), j = m2.begin(); i <= m1.end(); i++, j++) {
+        for (auto i = m1.begin(), j = m2.begin(); i < m1.end(); i++, j++) {
             *i = static_cast<double>(rand());
             *j = static_cast<double>(rand());
         }
@@ -733,7 +738,7 @@ test_out testGPUMatrixScalarArithmetic(size_t height, size_t width, bool verbose
     {
         Timer t_char(std::string("Accuracy: GPU scalar ") + test + std::string(": character"));
         LinAlgo::matrix<char> m1(height, width);
-        for (auto i = m1.begin(); i <= m1.end(); i++) {
+        for (auto i = m1.begin(); i < m1.end(); i++) {
             *i = rand() % CHAR_MAX;
         }
         char scalar = rand() % CHAR_MAX;
@@ -772,7 +777,7 @@ test_out testGPUMatrixScalarArithmetic(size_t height, size_t width, bool verbose
     {
         Timer t_char(std::string("Accuracy: GPU scalar ") + test + std::string(": short"));
         LinAlgo::matrix<short> m1(height, width);
-        for (auto i = m1.begin(); i <= m1.end(); i++) {
+        for (auto i = m1.begin(); i < m1.end(); i++) {
             *i = rand() % SHRT_MAX;
         }
         short scalar = rand() % SHRT_MAX;
@@ -811,7 +816,7 @@ test_out testGPUMatrixScalarArithmetic(size_t height, size_t width, bool verbose
     {
         Timer t_char(std::string("Accuracy: GPU scalar ") + test + std::string(": integer"));
         LinAlgo::matrix<int> m1(height, width);
-        for (auto i = m1.begin(); i <= m1.end(); i++) {
+        for (auto i = m1.begin(); i < m1.end(); i++) {
             *i = rand() % INT_MAX;
         }
         int scalar = rand() % INT_MAX;
@@ -850,7 +855,7 @@ test_out testGPUMatrixScalarArithmetic(size_t height, size_t width, bool verbose
     {
         Timer t_char(std::string("Accuracy: GPU scalar ") + test + std::string(": long"));
         LinAlgo::matrix<long> m1(height, width);
-        for (auto i = m1.begin(); i <= m1.end(); i++) {
+        for (auto i = m1.begin(); i < m1.end(); i++) {
             *i = rand() % LONG_MAX;
         }
         long scalar = rand() % LONG_MAX;
@@ -889,7 +894,7 @@ test_out testGPUMatrixScalarArithmetic(size_t height, size_t width, bool verbose
     {
         Timer t_char(std::string("Accuracy: GPU scalar ") + test + std::string(": float"));
         LinAlgo::matrix<float> m1(height, width);
-        for (auto i = m1.begin(); i <= m1.end(); i++) {
+        for (auto i = m1.begin(); i < m1.end(); i++) {
             *i = static_cast<float>(rand());
         }
         float scalar = static_cast<float>(rand());
@@ -928,7 +933,7 @@ test_out testGPUMatrixScalarArithmetic(size_t height, size_t width, bool verbose
     {
         Timer t_char(std::string("Accuracy: GPU scalar ") + test + std::string(": double"));
         LinAlgo::matrix<double> m1(height, width);
-        for (auto i = m1.begin(); i <= m1.end(); i++) {
+        for (auto i = m1.begin(); i < m1.end(); i++) {
             *i = static_cast<double>(rand());
         }
         double scalar = static_cast<double>(rand());
