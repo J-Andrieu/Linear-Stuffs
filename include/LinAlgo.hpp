@@ -23,6 +23,8 @@
 #define CL_HPP_MINIMUM_OPENCL_VERSION 120
 #ifdef _WIN32
 #include <CL\cl2.hpp>
+#elif __APPLE__
+#include <OpenCL/cl2.hpp>
 #else
 #include <CL/cl2.hpp>
 #endif
