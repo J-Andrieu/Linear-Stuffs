@@ -82,7 +82,7 @@ int main (int argc, char* argv[]) {
     }
 
 #ifndef DONT_USE_GPU
-    checkReturn (LinAlgo::InitGPU());
+    checkReturn (LinAlgo::InitGPU( ));
 
     if (params.verbose) {
         std::cout << (LinAlgo::IsGPUInitialized() ? "The GPU is initialized" : "The GPU is not initialized") << std::endl;
@@ -106,6 +106,17 @@ int main (int argc, char* argv[]) {
         if(params.accuracy_test || params.all) {
             CheckAccuracy(HEIGHT, WIDTH, params.log_file, params.verbose);
         }
+/*
+        LinAlgo::matrix<float> M = LinAlgo::identityMatrix(10);
+        M.useGPU(true);
+        print_matrix(M);
+        LinAlgo::matrix<float> N = LinAlgo::mapGPU(M, "__kernel void func(__global const float* A, __global float* B) { int i = get_global_id(0); B[i] = A[i] + 1; }");
+        cl_int err;
+        M.mapGPU("__kernel void func(__global float* A) { int i = get_global_id(0); A[i] += 1; }");
+        M.pullData();
+        print_matrix(M);
+        printf("Both map functions executed %scorrectly\n", (M == N ? "" : "in"));
+*/
 /*
         LinAlgo::matrix<int> M1(10, 10);
         LinAlgo::matrix<int> M2 = LinAlgo::identityMatrix(M1.getWidth());

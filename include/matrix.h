@@ -122,8 +122,8 @@ public:
     //I don't think I can actually template the gpu maps... we'll cross that bridge later
     //spatial map, like a mask? hmmmm... probably is something i should have
 #ifndef DONT_USE_GPU
-    matrix<ItemType>& mapGPU (std::string kernel, cl_int& err_code); //this function will compile and run a kernel that acts on a single array pointer... be careful
-    matrix<ItemType>& mapGPU (cl_kernel kernel, cl_int& err_code); //it will also assume that your kernel is accepting the right data from that array, so once again, be careful :P
+    matrix<ItemType>& mapGPU (std::string kernel, cl_int* err_code = NULL); //this function will compile and run a kernel that acts on a single array pointer... be careful
+    matrix<ItemType>& mapGPU (cl::Kernel& kernel, cl_int* err_code = NULL); //it will also assume that your kernel is accepting the right data from that array, so once again, be careful :P
     //should this take another one that's just a fully compiled and such kernel? probably
 #endif
 
@@ -195,9 +195,9 @@ public:
     //due to updating gpu data counting as cahnging the matrix, I can't
     //actually have these be const :'(
     template <class ArgType>
-    friend matrix<ArgType> LinAlgo::map (const matrix<ArgType>& M, std::string kernel, cl_int& error_ret);
+    friend matrix<ArgType> LinAlgo::mapGPU (matrix<ArgType>& M, std::string kernel, cl_int* error_ret);
     template <class ArgType>
-    friend matrix<ArgType> LinAlgo::map (const matrix<ArgType>& M, cl_kernel kernel, cl_int& error_ret);
+    friend matrix<ArgType> LinAlgo::mapGPU (matrix<ArgType>& M, cl::Kernel& kernel, cl_int* error_ret);
 #endif
 
     template <class ArgType>

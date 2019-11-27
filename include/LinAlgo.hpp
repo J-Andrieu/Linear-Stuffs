@@ -63,14 +63,14 @@ namespace LinAlgo {
     matrix<ItemType> inverse (matrix<ItemType>& M); //requires rre to work efficiently, not const due to determinant
 
     template <class ArgType, class ItemType = ArgType>
-    matrix<ArgType> map (const matrix<ItemType>& M, ArgType (*function) (ItemType));
+    matrix<ArgType> map (const matrix<ItemType>& M, ArgType (*function) (ItemType), bool asynchronous = false, int thread_count = 0);
 #ifndef DONT_USE_GPU
 //due to updating gpu data counting as cahnging the matrix, I can't
 //actually have these be const :'(
     template <class ItemType>
-    matrix<ItemType> map (const matrix<ItemType>& M, std::string kernel, cl_int* error_ret = NULL);
+    matrix<ItemType> mapGPU (matrix<ItemType>& M, std::string kernel, cl_int* error_ret = NULL);
     template <class ItemType>
-    matrix<ItemType> map (const matrix<ItemType>& M, cl::Kernel kernel, cl_int* error_ret = NULL);
+    matrix<ItemType> mapGPU (matrix<ItemType>& M, cl::Kernel& kernel, cl_int* error_ret = NULL);
 
     cl::Kernel createKernel(std::string kernel, cl_int* error_ret = NULL);
     //I should add a convolution kernel, huh?
@@ -447,7 +447,7 @@ static cl_int LinAlgo::InitGPU(std::vector<std::string> typesToInitialize) {
     if (typesToInitialize[0] == "all") {
         typesToInitialize = typeStrings;
     }
-    initializedTypes.reserve(typesToInitialize.size());
+    intitializedTypes.reserve(typesToInitialize.size());
 
     cl_int ret;
 
@@ -492,6 +492,7 @@ static cl_int LinAlgo::InitGPU(std::vector<std::string> typesToInitialize) {
     for (size_t type = 0; type < KernelType::NUM_TYPES; type++) {
         //printf("The kernel file name is: %s\n", std::string(kernel_directory + std::string("matrix_kernels_") + type_str[type] + std::string(".cl")).c_str());
         if (std::find(typesToInitialize.begin(), typesToInitialize.end(), typeStrings[type]) != typesToInitialize.end()) {
+            printf("The type %s is available\n", typeStrings[type].c_str());
             //create the programs
             programs[type] = create_program (kernel_directory +
                                              std::string ("matrix_kernels_") +
@@ -1035,14 +1036,56 @@ LinAlgo::matrix<ItemType> LinAlgo::gj (const LinAlgo::matrix<ItemType>& M) {
 * @brief Generates a kernel from source code for use with the mapping functions
 *
 * @note the function signature that will be built and called is
-* __kernel void main(), be sure to use appropriate types for pointers.
+* __kernel void func(), be sure to use appropriate types for pointers.
 * If this is an overwrite kernel then __gloabal <type>* data, otherwise
 * __global const <type>* in, __global <type>* out
 */
 cl::Kernel LinAlgo::createKernel(std::string kernel, cl_int* error_ret) {
-    cl::Program temp_prog = cl::Program(m_contex, {kernel.c_str(), kernel.length()});
+    cl::Program temp_prog = cl::Program(m_context, {kernel.c_str(), kernel.length()});
     temp_prog.build({m_default_device});
-    return cl::Kernel(temp_prog, "main", error_ret);
+    return cl::Kernel(temp_prog, "func", error_ret);
+}
+
+/**
+* @brief Executes the provided cl::Kernel on the requested matrix
+*/
+template <class ItemType>
+LinAlgo::matrix<ItemType> LinAlgo::mapGPU(LinAlgo::matrix<ItemType>& M, cl::Kernel& kernel, cl_int* error_ret) {
+    //prepare return matrix
+    matrix<ItemType> ret;
+    ret.m_height = M.m_height;
+    ret.m_width = M.m_width;
+    ret.m_useGPU = true;
+    ret.m_leaveOnGPU = M.m_leaveOnGPU;
+    ret.createResultBuffer();
+
+    //prepare the original matrix
+    if (!M.m_leaveOnGPU) {
+        M.pushToGPU();
+    }
+
+    //execute the kernel
+    kernel.setArg(0, *M.m_gpuData);
+    kernel.setArg(1, *ret.m_gpuData);
+    m_command_queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(ret.m_width * ret.m_height), cl::NullRange);
+    if (error_ret != NULL) {
+        *error_ret = m_command_queue.finish();
+    } else {
+        m_command_queue.finish();
+    }
+    if (!ret.leaveDataOnGPU()) {
+        ret.pullFromGPU();
+    }
+    return ret;
+}
+
+/**
+* @brief Executes the provided cl::Kernel on the requested matrix
+*/
+template <class ItemType>
+LinAlgo::matrix<ItemType> LinAlgo::mapGPU(LinAlgo::matrix<ItemType>& M, std::string kernel, cl_int* error_ret) {
+    cl::Kernel k_temp = createKernel(kernel);
+    return mapGPU(M, k_temp, error_ret);
 }
 
 #pragma region Vector Functions

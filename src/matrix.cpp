@@ -1555,6 +1555,42 @@ matrix<ItemType>& matrix<ItemType>::map(ItemType (*func)(ItemType&), bool asynch
     return *this;
 }
 
+/**
+* @brief Applies the provided kernel to this matrix
+*/
+template <class ItemType>
+matrix<ItemType>& matrix<ItemType>::mapGPU(cl::Kernel& kernel, cl_int* err) {
+    if (!m_useGPU) {
+        return *this;
+    }
+    if (!m_leaveOnGPU) {
+        pushToGPU();
+    }
+    kernel.setArg(0, *m_gpuData);
+    m_command_queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(m_width * m_height), cl::NullRange);
+    if (err != NULL) {
+        *err = m_command_queue.finish();
+    } else {
+        m_command_queue.finish();
+    }
+    if (!m_leaveOnGPU) {
+        pullFromGPU();
+    }
+    return *this;
+}
+
+/**
+* @brief Applies the provided kernel to this matrix
+*/
+template <class ItemType>
+matrix<ItemType>& matrix<ItemType>::mapGPU(std::string kernel, cl_int* err) {
+    if (!m_useGPU) {
+        return *this;
+    }
+    cl::Kernel k_temp = LinAlgo::createKernel(kernel);
+    return mapGPU(k_temp, err);
+}
+
 #pragma region Operator Overloads
 // <editor-fold desc="Operator Overloads">
 //{
