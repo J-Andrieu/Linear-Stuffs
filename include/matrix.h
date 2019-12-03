@@ -87,10 +87,12 @@ public:
     matrix<ItemType> getEigenVectors();
 
     //basic math
-    template <class argType>
-    matrix<ItemType> add (matrix<argType>& M); //can't const these cuz of pushing to gpu :'(
-    template <class argType>
-    matrix<ItemType> add (const argType& val);
+   template<class ArgType>
+    matrix<ItemType> add(ArgType& val);
+    template<class ArgType>
+    matrix<ItemType> addMatrix(matrix<ArgType>& val);
+    template <class ArgType>
+    matrix<ItemType> addScalar(ArgType scalar);
 
     template <class argType>
     matrix<ItemType> subtract (matrix<argType>& M);
@@ -148,9 +150,7 @@ public:
     bool operator!= (const matrix<ArgType>& M) const;
 
     template <class ArgType>
-    matrix<ItemType> operator+ (matrix<ArgType>& M);
-    template <class ArgType>
-    matrix<ItemType> operator+ (const ArgType& val);
+    matrix<ItemType> operator+ (ArgType&& val);
     template <class ArgType>
     matrix<ItemType>& operator+= (matrix<ArgType>& M);
     template <class ArgType>
@@ -401,6 +401,9 @@ private:
     cl_int execute_array_val_kernel (cl::Kernel kernel, ItemType& val, matrix<ItemType>& result);
 #endif
 };
+
+template <class ArgType1, class ArgType2>
+LinAlgo::matrix<ArgType1> operator+(ArgType2&& scalar, LinAlgo::matrix<ArgType1>& M);
 
 #include "../src/matrix.cpp"
 #endif

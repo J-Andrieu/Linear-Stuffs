@@ -722,7 +722,7 @@ bool matrix<ItemType>::pushData() {
 */
 template <class ItemType>
 template <class ArgType>
-matrix<ItemType> matrix<ItemType>::add (matrix<ArgType>& M) {
+matrix<ItemType> matrix<ItemType>::addMatrix (matrix<ArgType>& M) {
     //should I be concatenating the matrix ike this? probably not, a submatrix
     //can be made easily enough if they want concatenation...
     //yeah, i'll change this later
@@ -793,7 +793,7 @@ matrix<ItemType> matrix<ItemType>::add (matrix<ArgType>& M) {
 */
 template <class ItemType>
 template <class ArgType>
-matrix<ItemType> matrix<ItemType>::add (const ArgType& val) {
+matrix<ItemType> matrix<ItemType>::addScalar (ArgType val) {
 #ifndef DONT_USE_GPU
     matrix<ItemType> result;
     result.useGPU(m_useGPU);
@@ -847,12 +847,25 @@ matrix<ItemType> matrix<ItemType>::add (const ArgType& val) {
 }
 
 /**
-* @brief Operator overload for matrix::add()
+* @brief Type handler for matrix addition
 */
 template <class ItemType>
 template <class ArgType>
-matrix<ItemType> matrix<ItemType>::operator+ (matrix<ArgType>& M) {
-    return this->add (M);
+matrix<ItemType> matrix<ItemType>::add(ArgType& val) {
+    if constexpr (std::is_scalar<ArgType>::value || std::is_same<ArgType, std::complex<float>>::value
+                                                 || std::is_same<ArgType, std::complex<double>>::value
+                                                 || std::is_same<ArgType, std::complex<long double>>::value) {//if scalar value
+        return this->addScalar(val);
+    } else if constexpr (std::is_class<ArgType>::value) {//if it's a class type
+        //make an attempt. If it's not a matrix it'll fail at compile time
+        return this->addMatrix(val);
+    } else {//if it's just a random thing
+        //honestly this should just throw an exception
+        //how can i just throw a compilation error here?
+        //assert(1 == 0)?
+        static_assert(std::is_class<ArgType>::value, "Attempted matrix addition with incompatible type.");
+        return matrix<ItemType>();//null matrix cuz rip
+    }
 }
 
 /**
@@ -860,9 +873,76 @@ matrix<ItemType> matrix<ItemType>::operator+ (matrix<ArgType>& M) {
 */
 template <class ItemType>
 template <class ArgType>
-matrix<ItemType> matrix<ItemType>::operator+ (const ArgType& val) {
+matrix<ItemType> matrix<ItemType>::operator+ (ArgType&& val) {
     return this->add (val);
 }
+
+/**
+* @brief Operator overload for matrix::add()
+*/
+template <class ArgType1, class ArgType2>
+matrix<ArgType1> operator+ (ArgType2&& val, matrix<ArgType1>& M) {
+    return M.add (val);
+}
+
+/**
+* @brief Operator overload for += with another matrix
+*/
+/*
+template <class ItemType>
+template <class ArgType>
+matrix<ItemType> matrix<ItemType>:operator+= (matrix<ArgType>& M) {
+    #ifndef DONT_USE_GPU
+if (! (m_useGPU || ALL_USE_GPU) || !std::is_same<ItemType, ArgType>::value) { //if don't use the gpu
+        if (M.m_leaveOnGPU && M.m_useGPU) {
+            M.pullFromGPU( );
+        }
+#else
+        matrix<ItemType> result (m_height < M.m_height ? m_height : M.m_height, m_width < M.m_width ? m_width : M.m_width);
+#endif
+        for (size_t i = 0; i < result.m_height; i++) {
+            for (size_t j = 0; j < result.m_width; j++) {
+                m_data[i][j] += M.m_data[i][j];
+            }
+        }
+        return result;
+#ifndef DONT_USE_GPU
+    } else {
+        if (!GPU_INITIALIZED) {
+            throw(LinAlgo::gpu_exception("GPU is not initialized", __FILE__, __LINE__, -99));
+        }
+        pushToGPU ( );
+        M.pushToGPU ( );
+        result.createResultBuffer ( );
+        if (std::is_same<ItemType, ArgType>::value) {
+            cl_int ret; //i'm not even kinda checking this rn, but maybe i will later :P
+            if (std::is_same<ItemType, char>::value) {
+                ret = execute_add_kernel (m_charKernels[Kernel::ADD], M, result);
+            } else if (std::is_same<ItemType, short>::value) {
+                ret = execute_add_kernel (m_shortKernels[Kernel::ADD], M, result);
+            } else if (std::is_same<ItemType, int>::value) {
+                ret = execute_add_kernel (m_intKernels[Kernel::ADD], M, result);
+            } else if (std::is_same<ItemType, long>::value) {
+                ret = execute_add_kernel (m_longKernels[Kernel::ADD], M, result);
+            } else if (std::is_same<ItemType, float>::value) {
+                ret = execute_add_kernel (m_floatKernels[Kernel::ADD], M, result);
+            } else if (std::is_same<ItemType, double>::value) {
+                ret = execute_add_kernel (m_doubleKernels[Kernel::ADD], M, result);
+            } else {
+                throw(LinAlgo::gpu_exception("Can't GPU compute, unsupported item type", __FILE__, __LINE__, -99));
+            }
+        } else {
+            throw(LinAlgo::gpu_exception("Can't GPU compute, matrices are of differing types", __FILE__, __LINE__, -99));
+        }
+        if (!result.m_leaveOnGPU) {
+            result.pullFromGPU ( );
+        }
+        return result;
+    }
+#endif
+}
+*/
+
 //}
 // </editor-fold>
 #pragma endregion

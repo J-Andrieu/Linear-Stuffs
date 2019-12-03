@@ -106,6 +106,14 @@ int main (int argc, char* argv[]) {
         if(params.accuracy_test || params.all) {
             CheckAccuracy(HEIGHT, WIDTH, params.log_file, params.verbose);
         }
+
+        //LinAlgo::matrix<double> m1 = generateShiftedPrimesMatrix<double>(10);
+        //LinAlgo::matrix<double> m2 = LinAlgo::identityMatrix(10);
+        //print_matrix(m1);
+        //m1 = m1 + 5 + LinAlgo::inverse(m1) + generateShiftedPrimesMatrix<double>(10) + m2;
+        //m1 = 5 + m1;
+        //print_matrix(m1);
+
 /*
         LinAlgo::matrix<float> M = LinAlgo::identityMatrix(10);
         M.useGPU(true);

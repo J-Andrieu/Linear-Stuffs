@@ -8,11 +8,13 @@
 #define LINEAR_ALGEBRA_H
 
 #include <cmath>
+#include <complex>
 #include <vector>
 #include <fstream>
 #include <cstdlib>
 #include <string>
 #include <type_traits>
+#include <typeinfo>
 #include <cassert>
 #include <thread>
 
@@ -72,7 +74,7 @@ namespace LinAlgo {
     template <class ItemType>
     matrix<ItemType> mapGPU (matrix<ItemType>& M, cl::Kernel& kernel, cl_int* error_ret = NULL);
 
-    cl::Kernel createKernel(std::string kernel, cl_int* error_ret = NULL);
+    inline cl::Kernel createKernel(std::string kernel, cl_int* error_ret = NULL);
     //I should add a convolution kernel, huh?
 #endif
 
@@ -492,7 +494,7 @@ static cl_int LinAlgo::InitGPU(std::vector<std::string> typesToInitialize) {
     for (size_t type = 0; type < KernelType::NUM_TYPES; type++) {
         //printf("The kernel file name is: %s\n", std::string(kernel_directory + std::string("matrix_kernels_") + type_str[type] + std::string(".cl")).c_str());
         if (std::find(typesToInitialize.begin(), typesToInitialize.end(), typeStrings[type]) != typesToInitialize.end()) {
-            printf("The type %s is available\n", typeStrings[type].c_str());
+            //printf("The type %s is available\n", typeStrings[type].c_str());
             //create the programs
             programs[type] = create_program (kernel_directory +
                                              std::string ("matrix_kernels_") +
@@ -1040,7 +1042,7 @@ LinAlgo::matrix<ItemType> LinAlgo::gj (const LinAlgo::matrix<ItemType>& M) {
 * If this is an overwrite kernel then __gloabal <type>* data, otherwise
 * __global const <type>* in, __global <type>* out
 */
-cl::Kernel LinAlgo::createKernel(std::string kernel, cl_int* error_ret) {
+inline cl::Kernel LinAlgo::createKernel(std::string kernel, cl_int* error_ret) {
     cl::Program temp_prog = cl::Program(m_context, {kernel.c_str(), kernel.length()});
     temp_prog.build({m_default_device});
     return cl::Kernel(temp_prog, "func", error_ret);
