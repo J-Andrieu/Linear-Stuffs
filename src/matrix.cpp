@@ -959,7 +959,7 @@ if (! (m_useGPU || ALL_USE_GPU) || !std::is_same<ItemType, ArgType>::value) { //
 */
 template <class ItemType>
 template <class ArgType>
-matrix<ItemType> matrix<ItemType>::subtract (matrix<ArgType>& M) {
+matrix<ItemType> matrix<ItemType>::subtractMatrix (matrix<ArgType>& M) {
     //should I be concatenating the matrix ike this? probably not, a submatrix
     //can be made easily enough if they want concatenation...
     //yeah, i'll change this later
@@ -1032,7 +1032,7 @@ matrix<ItemType> matrix<ItemType>::subtract (matrix<ArgType>& M) {
 */
 template <class ItemType>
 template <class ArgType>
-matrix<ItemType> matrix<ItemType>::subtract (const ArgType& val) {
+matrix<ItemType> matrix<ItemType>::subtractScalar (ArgType val) {
 #ifndef DONT_USE_GPU
     matrix<ItemType> result;
     result.useGPU(m_useGPU);
@@ -1086,12 +1086,23 @@ matrix<ItemType> matrix<ItemType>::subtract (const ArgType& val) {
 }
 
 /**
-* @brief Operator overload for matrix::subtract()
+* @brief Type handler for matrix subtraction
 */
 template <class ItemType>
 template <class ArgType>
-matrix<ItemType> matrix<ItemType>::operator- (matrix<ArgType>& M) {
-    return this->subtract (M);
+matrix<ItemType> matrix<ItemType>::subtract(ArgType& val) {
+    if constexpr (std::is_scalar<ArgType>::value || std::is_same<ArgType, std::complex<float>>::value
+                                                 || std::is_same<ArgType, std::complex<double>>::value
+                                                 || std::is_same<ArgType, std::complex<long double>>::value) {//if scalar value
+        return this->subtractScalar(val);
+    } else if constexpr (std::is_class<ArgType>::value) {//if it's a class type
+        //make an attempt. If it's not a matrix it'll fail at compile time
+        return this->subtractMatrix(val);
+    } else {//if it's just a random thing
+        //assert will evaluate as false since it had to be false to get here
+        static_assert(std::is_class<ArgType>::value, "Attempted matrix subtraction with incompatible type.");
+        return matrix<ItemType>();//null matrix cuz rip
+    }
 }
 
 /**
@@ -1099,9 +1110,18 @@ matrix<ItemType> matrix<ItemType>::operator- (matrix<ArgType>& M) {
 */
 template <class ItemType>
 template <class ArgType>
-matrix<ItemType> matrix<ItemType>::operator- (const ArgType& val) {
+matrix<ItemType> matrix<ItemType>::operator- (ArgType&& val) {
     return this->subtract (val);
 }
+
+/**
+* @brief Operator overload for matrix::subtract()
+*/
+template <class ArgType1, class ArgType2>
+matrix<ArgType1> operator- (ArgType2&& val, matrix<ArgType1>& M) {
+    return M.subtract (val);
+}
+
 //}
 // </editor-fold>
 #pragma endregion
@@ -1122,7 +1142,7 @@ matrix<ItemType> matrix<ItemType>::operator- (const ArgType& val) {
 */
 template <class ItemType>
 template <class ArgType>
-matrix<ItemType> matrix<ItemType>::multiply (matrix<ArgType>& M) {
+matrix<ItemType> matrix<ItemType>::multiplyMatrix (matrix<ArgType>& M) {
     if (m_width != M.m_height) {
         throw(std::runtime_error(std::string("The dimensions ") + std::to_string(m_height) + std::string("x") + std::to_string(m_width) + std::string(" and ") +
                                  std::to_string(M.m_height) + std::string("x") + std::to_string(M.m_width) + std::string(" are mismatched.")));
@@ -1203,7 +1223,7 @@ matrix<ItemType> matrix<ItemType>::multiply (matrix<ArgType>& M) {
 */
 template <class ItemType>
 template <class ArgType>
-matrix<ItemType> matrix<ItemType>::multiply (const ArgType& val) {
+matrix<ItemType> matrix<ItemType>::multiplyScalar (ArgType val) {
 #ifndef DONT_USE_GPU
     matrix<ItemType> result;
     result.useGPU(m_useGPU);
@@ -1328,12 +1348,23 @@ matrix<ItemType> matrix<ItemType>::elementMultiply (matrix<ArgType>& M) {
 }
 
 /**
-* @brief Operator overload for matrix::multiply()
+* @brief Type handler for matrix multiplication
 */
 template <class ItemType>
 template <class ArgType>
-matrix<ItemType> matrix<ItemType>::operator* (matrix<ArgType>& M) {
-    return this->multiply (M);
+matrix<ItemType> matrix<ItemType>::multiply(ArgType& val) {
+    if constexpr (std::is_scalar<ArgType>::value || std::is_same<ArgType, std::complex<float>>::value
+                                                 || std::is_same<ArgType, std::complex<double>>::value
+                                                 || std::is_same<ArgType, std::complex<long double>>::value) {//if scalar value
+        return this->multiplyScalar(val);
+    } else if constexpr (std::is_class<ArgType>::value) {//if it's a class type
+        //make an attempt. If it's not a matrix it'll fail at compile time
+        return this->multiplyMatrix(val);
+    } else {//if it's just a random thing
+        //assert will evaluate as false since it had to be false to get here
+        static_assert(std::is_class<ArgType>::value, "Attempted matrix multiplication with incompatible type.");
+        return matrix<ItemType>();//null matrix cuz rip
+    }
 }
 
 /**
@@ -1341,8 +1372,16 @@ matrix<ItemType> matrix<ItemType>::operator* (matrix<ArgType>& M) {
 */
 template <class ItemType>
 template <class ArgType>
-matrix<ItemType> matrix<ItemType>::operator* (const ArgType& val) {
+matrix<ItemType> matrix<ItemType>::operator* (ArgType&& val) {
     return this->multiply (val);
+}
+
+/**
+* @brief Operator overload for matrix::multiply()
+*/
+template <class ArgType1, class ArgType2>
+matrix<ArgType1> operator* (ArgType2&& val, matrix<ArgType1>& M) {
+    return M.multiply (val);
 }
 //}
 // </editor-fold>
@@ -1361,7 +1400,7 @@ matrix<ItemType> matrix<ItemType>::operator* (const ArgType& val) {
 */
 template <class ItemType>
 template <class ArgType>
-matrix<ItemType> matrix<ItemType>::divide(matrix<ArgType>& M) {
+matrix<ItemType> matrix<ItemType>::divideMatrix (matrix<ArgType>& M) {
     if (M.m_height != M.m_width) {
         throw(std::runtime_error(std::string("The dimensions ") + std::to_string(m_height) + std::string("x") + std::to_string(m_width) + std::string(" and ") +
                                  std::to_string(M.m_height) + std::string("x") + std::to_string(M.m_width) + std::string(" are mismatched.")));
@@ -1382,7 +1421,7 @@ matrix<ItemType> matrix<ItemType>::divide(matrix<ArgType>& M) {
 */
 template <class ItemType>
 template <class ArgType>
-matrix<ItemType> matrix<ItemType>::divide (const ArgType& val) {
+matrix<ItemType> matrix<ItemType>::divideScalar (ArgType val) {
 #ifndef DONT_USE_GPU
     matrix<ItemType> result;
     result.useGPU(m_useGPU);
@@ -1507,12 +1546,23 @@ matrix<ItemType> matrix<ItemType>::elementDivide (matrix<ArgType>& M) {
 }
 
 /**
-* @brief Operator overload for matrix::divide()
+* @brief Type handler for matrix division
 */
 template <class ItemType>
 template <class ArgType>
-matrix<ItemType> matrix<ItemType>::operator/ (const ArgType& val) {
-    return this->divide (val);
+matrix<ItemType> matrix<ItemType>::divide(ArgType& val) {
+    if constexpr (std::is_scalar<ArgType>::value || std::is_same<ArgType, std::complex<float>>::value
+                                                 || std::is_same<ArgType, std::complex<double>>::value
+                                                 || std::is_same<ArgType, std::complex<long double>>::value) {//if scalar value
+        return this->divideScalar(val);
+    } else if constexpr (std::is_class<ArgType>::value) {//if it's a class type
+        //make an attempt. If it's not a matrix it'll fail at compile time
+        return this->divideMatrix(val);
+    } else {//if it's just a random thing
+        //assert will evaluate as false since it had to be false to get here
+        static_assert(std::is_class<ArgType>::value, "Attempted matrix division with incompatible type.");
+        return matrix<ItemType>();//null matrix cuz rip
+    }
 }
 
 /**
@@ -1520,8 +1570,16 @@ matrix<ItemType> matrix<ItemType>::operator/ (const ArgType& val) {
 */
 template <class ItemType>
 template <class ArgType>
-matrix<ItemType> matrix<ItemType>::operator/ (matrix<ArgType>& M) {
-    return this->divide (M);
+matrix<ItemType> matrix<ItemType>::operator/ (ArgType&& val) {
+    return this->divide (val);
+}
+
+/**
+* @brief Operator overload for matrix::divide()
+*/
+template <class ArgType1, class ArgType2>
+matrix<ArgType1> operator/ (ArgType2&& val, matrix<ArgType1>& M) {
+    return M.divide (val);
 }
 //}
 // </editor-fold>

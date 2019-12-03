@@ -87,31 +87,37 @@ public:
     matrix<ItemType> getEigenVectors();
 
     //basic math
-   template<class ArgType>
+    template <class ArgType>
     matrix<ItemType> add(ArgType& val);
     template<class ArgType>
     matrix<ItemType> addMatrix(matrix<ArgType>& val);
     template <class ArgType>
     matrix<ItemType> addScalar(ArgType scalar);
 
-    template <class argType>
-    matrix<ItemType> subtract (matrix<argType>& M);
-    template <class argType>
-    matrix<ItemType> subtract (const argType& val);
+    template <class ArgType>
+    matrix<ItemType> subtract(ArgType& val);
+    template <class ArgType>
+    matrix<ItemType> subtractMatrix (matrix<ArgType>& M);
+    template <class ArgType>
+    matrix<ItemType> subtractScalar (ArgType val);
 
-    template <class argType>
-    matrix<ItemType> multiply (matrix<argType>& M);
-    template <class argType>
-    matrix<ItemType> multiply (const argType& val);
-    template <class argType>
-    matrix<ItemType> elementMultiply (matrix<argType>& M);
+    template <class ArgType>
+    matrix<ItemType> multiply(ArgType& val);
+    template <class ArgType>
+    matrix<ItemType> multiplyMatrix (matrix<ArgType>& M);
+    template <class ArgType>
+    matrix<ItemType> multiplyScalar (ArgType val);
+    template <class ArgType>
+    matrix<ItemType> elementMultiply (matrix<ArgType>& M);
 
-    template <class argType>
-    matrix<ItemType> divide (matrix<argType>& M);
-    template <class argType>
-    matrix<ItemType> divide (const argType& val);
-    template <class argType>
-    matrix<ItemType> elementDivide (matrix<argType>& M);
+    template <class ArgType>
+    matrix<ItemType> divide(ArgType& val);
+    template <class ArgType>
+    matrix<ItemType> divideMatrix (matrix<ArgType>& M);
+    template <class ArgType>
+    matrix<ItemType> divideScalar (ArgType val);
+    template <class ArgType>
+    matrix<ItemType> elementDivide (matrix<ArgType>& M);
 
     //linear fun times
     //the versions in here will overwrite the matrix
@@ -157,27 +163,21 @@ public:
     matrix<ItemType>& operator+= (const ArgType& val);
 
     template <class ArgType>
-    matrix<ItemType> operator- (matrix<ArgType>& M);
-    template <class ArgType>
-    matrix<ItemType> operator- (const ArgType& val);
+    matrix<ItemType> operator- (ArgType&& val);
     template <class ArgType>
     matrix<ItemType>& operator-= (matrix<ArgType>& M);
     template <class ArgType>
     matrix<ItemType>& operator-= (const ArgType& val);
 
     template <class ArgType>
-    matrix<ItemType> operator* (matrix<ArgType>& M);
-    template <class ArgType>
-    matrix<ItemType> operator* (const ArgType& val);
+    matrix<ItemType> operator* (ArgType&& val);
     template <class ArgType>
     matrix<ItemType>& operator*= (matrix<ArgType>& M);
     template <class ArgType>
     matrix<ItemType>& operator*= (const ArgType& val);
 
     template <class ArgType>
-    matrix<ItemType> operator/ (matrix<ArgType>& M);
-    template <class ArgType>
-    matrix<ItemType> operator/ (const ArgType& val);
+    matrix<ItemType> operator/ (ArgType&& val);
     template <class ArgType>
     matrix<ItemType>& operator/= (matrix<ArgType>& M);
     template <class ArgType>
@@ -404,6 +404,12 @@ private:
 
 template <class ArgType1, class ArgType2>
 LinAlgo::matrix<ArgType1> operator+(ArgType2&& scalar, LinAlgo::matrix<ArgType1>& M);
+template <class ArgType1, class ArgType2>
+LinAlgo::matrix<ArgType1> operator-(ArgType2&& scalar, LinAlgo::matrix<ArgType1>& M);
+template <class ArgType1, class ArgType2>
+LinAlgo::matrix<ArgType1> operator*(ArgType2&& scalar, LinAlgo::matrix<ArgType1>& M);
+template <class ArgType1, class ArgType2>
+LinAlgo::matrix<ArgType1> operator/(ArgType2&& scalar, LinAlgo::matrix<ArgType1>& M);
 
 #include "../src/matrix.cpp"
 #endif
