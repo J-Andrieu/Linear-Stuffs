@@ -880,9 +880,11 @@ matrix<ItemType> matrix<ItemType>::operator+ (ArgType&& val) {
 /**
 * @brief Operator overload for matrix::add()
 */
-template <class ArgType1, class ArgType2>
-matrix<ArgType1> operator+ (ArgType2&& val, matrix<ArgType1>& M) {
-    return M.add (val);
+template <class ArgType1, class ArgType2, typename std::enable_if<std::is_scalar<ArgType1>::value || std::is_same<ArgType1, std::complex<float>>::value
+                                                                                                  || std::is_same<ArgType1, std::complex<double>>::value
+                                                                                                  || std::is_same<ArgType1, std::complex<long double>>::value, int>::type = 0>
+matrix<ArgType2> operator+ (ArgType1&& val, matrix<ArgType2>& M) {
+    return M.addScalar(val);
 }
 
 /**
@@ -1117,9 +1119,11 @@ matrix<ItemType> matrix<ItemType>::operator- (ArgType&& val) {
 /**
 * @brief Operator overload for matrix::subtract()
 */
-template <class ArgType1, class ArgType2>
-matrix<ArgType1> operator- (ArgType2&& val, matrix<ArgType1>& M) {
-    return M.subtract (val);
+template <class ArgType1, class ArgType2, typename std::enable_if<std::is_scalar<ArgType1>::value || std::is_same<ArgType1, std::complex<float>>::value
+                                                                                                  || std::is_same<ArgType1, std::complex<double>>::value
+                                                                                                  || std::is_same<ArgType1, std::complex<long double>>::value, int>::type = 0>
+matrix<ArgType2> operator- (ArgType1&& val, matrix<ArgType2>& M) {
+    return M.subtractScalar(val);
 }
 
 //}
@@ -1379,9 +1383,11 @@ matrix<ItemType> matrix<ItemType>::operator* (ArgType&& val) {
 /**
 * @brief Operator overload for matrix::multiply()
 */
-template <class ArgType1, class ArgType2>
-matrix<ArgType1> operator* (ArgType2&& val, matrix<ArgType1>& M) {
-    return M.multiply (val);
+template <class ArgType1, class ArgType2, typename std::enable_if<std::is_scalar<ArgType1>::value || std::is_same<ArgType1, std::complex<float>>::value
+                                                                                                  || std::is_same<ArgType1, std::complex<double>>::value
+                                                                                                  || std::is_same<ArgType1, std::complex<long double>>::value, int>::type = 0>
+matrix<ArgType2> operator* (ArgType1&& val, matrix<ArgType2>& M) {
+    return M.multiplyScalar(val);
 }
 //}
 // </editor-fold>
@@ -1577,9 +1583,11 @@ matrix<ItemType> matrix<ItemType>::operator/ (ArgType&& val) {
 /**
 * @brief Operator overload for matrix::divide()
 */
-template <class ArgType1, class ArgType2>
-matrix<ArgType1> operator/ (ArgType2&& val, matrix<ArgType1>& M) {
-    return M.divide (val);
+template <class ArgType1, class ArgType2, typename std::enable_if<std::is_scalar<ArgType1>::value || std::is_same<ArgType1, std::complex<float>>::value
+                                                                                                  || std::is_same<ArgType1, std::complex<double>>::value
+                                                                                                  || std::is_same<ArgType1, std::complex<long double>>::value, int>::type = 0>
+matrix<ArgType2> operator/ (ArgType1&& val, matrix<ArgType2>& M) {
+    return M.divideScalar(val);
 }
 //}
 // </editor-fold>

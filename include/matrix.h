@@ -402,14 +402,22 @@ private:
 #endif
 };
 
-template <class ArgType1, class ArgType2>
-LinAlgo::matrix<ArgType1> operator+(ArgType2&& scalar, LinAlgo::matrix<ArgType1>& M);
-template <class ArgType1, class ArgType2>
-LinAlgo::matrix<ArgType1> operator-(ArgType2&& scalar, LinAlgo::matrix<ArgType1>& M);
-template <class ArgType1, class ArgType2>
-LinAlgo::matrix<ArgType1> operator*(ArgType2&& scalar, LinAlgo::matrix<ArgType1>& M);
-template <class ArgType1, class ArgType2>
-LinAlgo::matrix<ArgType1> operator/(ArgType2&& scalar, LinAlgo::matrix<ArgType1>& M);
+template <class ArgType1, class ArgType2, typename std::enable_if<std::is_scalar<ArgType1>::value || std::is_same<ArgType1, std::complex<float>>::value
+                                                                                         || std::is_same<ArgType1, std::complex<double>>::value
+                                                                                         || std::is_same<ArgType1, std::complex<long double>>::value, int>::type = 0>
+LinAlgo::matrix<ArgType2> operator+(ArgType1&& scalar, LinAlgo::matrix<ArgType2>& M);
+template <class ArgType1, class ArgType2, typename std::enable_if<std::is_scalar<ArgType1>::value || std::is_same<ArgType1, std::complex<float>>::value
+                                                                                         || std::is_same<ArgType1, std::complex<double>>::value
+                                                                                         || std::is_same<ArgType1, std::complex<long double>>::value, int>::type = 0>
+LinAlgo::matrix<ArgType2> operator-(ArgType1&& scalar, LinAlgo::matrix<ArgType2>& M);
+template <class ArgType1, class ArgType2, typename std::enable_if<std::is_scalar<ArgType1>::value || std::is_same<ArgType1, std::complex<float>>::value
+                                                                                         || std::is_same<ArgType1, std::complex<double>>::value
+                                                                                         || std::is_same<ArgType1, std::complex<long double>>::value, int>::type = 0>
+LinAlgo::matrix<ArgType2> operator*(ArgType1&& scalar, LinAlgo::matrix<ArgType2>& M);
+template <class ArgType1, class ArgType2, typename std::enable_if<std::is_scalar<ArgType1>::value || std::is_same<ArgType1, std::complex<float>>::value
+                                                                                         || std::is_same<ArgType1, std::complex<double>>::value
+                                                                                         || std::is_same<ArgType1, std::complex<long double>>::value, int>::type = 0>
+LinAlgo::matrix<ArgType2> operator/(ArgType1&& scalar, LinAlgo::matrix<ArgType2>& M);
 
 #include "../src/matrix.cpp"
 #endif
